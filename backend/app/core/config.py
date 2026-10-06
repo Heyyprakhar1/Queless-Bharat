@@ -1,0 +1,98 @@
+"""Application configuration and environment settings."""
+
+import json
+from functools import lru_cache
+from typing import Annotated, Any
+
+from pydantic import BeforeValidator, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _parse_origins(v: Any) -> list[str]:
+    if isinstance(v, str):
+        v = v.strip()
+        if v.startswith("[") and v.endswith("]"):
+            try:
+                return json.loads(v)
+            except Exception:
+                pass
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
+    elif isinstance(v, list):
+        return v
+    return ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+class Settings(BaseSettings):
+    """Strongly typed application configuration."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # Runtime metadata
+    ENVIRONMENT: str = "development"
+    PROJECT_NAME: str = "QueueLess Bharat"
+    API_V1_STR: str = "/api/v1"
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    LOG_LEVEL: str = "INFO"
+
+    # Security & CORS: explicit origin list, never wildcard in production
+    ALLOWED_ORIGINS: Annotated[list[str], BeforeValidator(_parse_origins)] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+    # Database parameters
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "queless_user"
+    POSTGRES_PASSWORD: str = "queless_password"
+    POSTGRES_DB: str = "queless_db"
+    DATABASE_URL: str | None = None
+
+    @field_validator("ENVIRONMENT")
+    @classmethod
+    def validate_environment(cls, v: str) -> str:
+        valid_envs = {"development", "staging", "production"}
+        v_clean = v.lower().strip()
+        if v_clean not in valid_envs:
+            raise ValueError(f"ENVIRONMENT must be one of: {valid_envs}")
+        return v_clean
+
+    @property
+    def async_database_url(self) -> str:
+        """SQLAlchemy asynchronous database connection string."""
+        if self.DATABASE_URL:
+            if self.DATABASE_URL.startswith("postgresql://"):
+                return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return self.DATABASE_URL
+        return (
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def sync_database_url(self) -> str:
+        """SQLAlchemy synchronous database connection string for migrations."""
+        if self.DATABASE_URL:
+            if self.DATABASE_URL.startswith("postgresql+asyncpg://"):
+                return self.DATABASE_URL.replace(
+                    "postgresql+asyncpg://", "postgresql+psycopg://", 1
+                )
+            elif self.DATABASE_URL.startswith("postgresql://"):
+                return self.DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+            return self.DATABASE_URL
+        return (
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Singleton getter for application settings."""
+    return Settings()
