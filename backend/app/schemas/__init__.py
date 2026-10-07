@@ -1,5 +1,11 @@
 """Data Transfer Objects and schema validation layer."""
 
+from app.schemas.auth import (
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserResponse,
+)
 from app.schemas.counter import CounterCreate, CounterResponse
 from app.schemas.health import HealthResponse
 from app.schemas.location import LocationCreate, LocationResponse
@@ -33,7 +39,11 @@ __all__ = [
     "ServiceCreate",
     "ServiceResponse",
     "StartServiceRequest",
+    "TokenResponse",
+    "UserLoginRequest",
     "UserQueueStatusResponse",
+    "UserRegisterRequest",
+    "UserResponse",
     "WaitEstimatePayload",
     "WaitObservationCreate",
     "WaitObservationResponse",

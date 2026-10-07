@@ -1,14 +1,15 @@
-# QueueLess Bharat API Specification (Milestone 3 Production Hardened)
+# QueueLess Bharat API Specification (Milestone 4 Auth & RBAC Hardened)
 
 > **Base URL:** `/api/v1`  
 > **Protocol:** HTTP/1.1 REST  
-> **Content-Type:** `application/json`
+> **Content-Type:** `application/json`  
+> **Security:** Stateless Bearer JWT (`Authorization: Bearer <token>`)
 
 ---
 
 ## 1. Overview & Error Semantics
 
-The QueueLess Bharat API provides clean RESTful interfaces for catalog management, queue lifecycle operations, citizen wait observations, and deterministic wait-time projections.
+The QueueLess Bharat API provides clean RESTful interfaces for catalog management, queue lifecycle operations, citizen wait observations, deterministic wait-time projections, and Role-Based Access Control (RBAC).
 
 ### Standard HTTP Status Codes
 
@@ -17,8 +18,10 @@ The QueueLess Bharat API provides clean RESTful interfaces for catalog managemen
 | **`200 OK`** | Success | Query returned or mutation processed successfully |
 | **`201 Created`** | Created | Entity created successfully |
 | **`400 Bad Request`** | Invalid Transition | Business invariant or state machine transition rejected |
+| **`401 Unauthorized`** | Unauthenticated | Missing, expired, or invalid Bearer JWT authentication |
+| **`403 Forbidden`** | Unauthorized / BOLA | Role unauthorized or cross-tenant/cross-user access rejected |
 | **`404 Not Found`** | Not Found | Target entity (Location, Service, Counter, QueueSession) not found |
-| **`409 Conflict`** | Conflict | Duplicate idempotency key used for a conflicting action |
+| **`409 Conflict`** | Conflict | Duplicate idempotency key or existing user email collision |
 | **`422 Unprocessable`**| Validation Error | Malformed request body or schema validation violation |
 | **`503 Unavailable`** | Unavailable | Dependent system unavailable |
 

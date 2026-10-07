@@ -46,6 +46,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Authentication & Security
+    AUTH_SECRET_KEY: str = "dev-insecure-secret-key-replace-in-production-min-32-chars-long!"
+    AUTH_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+
     # Database parameters
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432

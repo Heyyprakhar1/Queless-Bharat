@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -29,6 +30,7 @@ from app.domain.enums import (
     QueueEventType,
     QueueSessionStatus,
     ServiceStatus,
+    UserRole,
 )
 
 # Use JSONB for PostgreSQL dialect, fallback to standard JSON
@@ -153,6 +155,42 @@ class Counter(Base):
     )
 
 
+class User(Base):
+    """Platform identity representing a citizen, operator, or administrator."""
+
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            f"role IN ('{UserRole.CITIZEN}', '{UserRole.OPERATOR}', '{UserRole.ADMIN}')",
+            name="chk_users_role",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default=UserRole.CITIZEN)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    assigned_service_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("services.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    assigned_service: Mapped["Service | None"] = relationship("Service")
+    queue_sessions: Mapped[list["QueueSession"]] = relationship(
+        "QueueSession", back_populates="user"
+    )
+
+
 class QueueSession(Base):
     """Represents one participant's individual queue lifecycle."""
 
@@ -171,6 +209,9 @@ class QueueSession(Base):
         ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True
     )
     user_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    user_uuid: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default=QueueSessionStatus.WAITING
     )
@@ -191,6 +232,7 @@ class QueueSession(Base):
     )
 
     service: Mapped["Service"] = relationship("Service", back_populates="queue_sessions")
+    user: Mapped["User | None"] = relationship("User", back_populates="queue_sessions")
     events: Mapped[list["QueueEvent"]] = relationship(
         "QueueEvent", back_populates="queue_session", cascade="all, delete-orphan"
     )

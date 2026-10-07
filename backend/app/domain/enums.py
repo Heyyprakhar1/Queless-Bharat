@@ -3,6 +3,14 @@
 from enum import StrEnum
 
 
+class UserRole(StrEnum):
+    """Platform identity roles."""
+
+    CITIZEN = "CITIZEN"
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"
+
+
 class LocationCategory(StrEnum):
     """Initial MVP civic domains."""
 

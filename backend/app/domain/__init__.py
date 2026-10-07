@@ -12,6 +12,7 @@ from app.domain.enums import (
     QueueEventType,
     QueueSessionStatus,
     ServiceStatus,
+    UserRole,
 )
 from app.domain.exceptions import (
     DomainError,
@@ -28,6 +29,7 @@ from app.domain.models import (
     QueueSession,
     Service,
     ServiceSession,
+    User,
     WaitObservation,
 )
 
@@ -52,5 +54,7 @@ __all__ = [
     "Service",
     "ServiceSession",
     "ServiceStatus",
+    "User",
+    "UserRole",
     "WaitObservation",
 ]

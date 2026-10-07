@@ -77,6 +77,7 @@ class QueueSessionResponse(BaseModel):
     id: uuid.UUID
     service_id: uuid.UUID
     user_id: str | None
+    user_uuid: uuid.UUID | None = None
     status: QueueSessionStatus
     checked_in_at: datetime
     service_started_at: datetime | None

@@ -5,6 +5,7 @@ import type {
   Service,
   UserQueueStatusResponse,
 } from '../types/queue'
+import { getAuthHeaders } from './auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
@@ -13,7 +14,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  */
 export async function fetchLocations(): Promise<Location[]> {
   const response = await fetch(`${API_BASE_URL}/api/v1/locations`, {
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      ...getAuthHeaders(),
+    },
   })
   if (!response.ok) {
     throw new Error(`Failed to fetch locations: HTTP ${response.status}`)
@@ -29,7 +33,10 @@ export async function fetchServices(locationId?: string): Promise<Service[]> {
     ? `${API_BASE_URL}/api/v1/services?location_id=${encodeURIComponent(locationId)}`
     : `${API_BASE_URL}/api/v1/services`
   const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      ...getAuthHeaders(),
+    },
   })
   if (!response.ok) {
     throw new Error(`Failed to fetch services: HTTP ${response.status}`)
@@ -44,7 +51,10 @@ export async function fetchQueueStatus(serviceId: string): Promise<QueueStatusRe
   const response = await fetch(
     `${API_BASE_URL}/api/v1/services/${encodeURIComponent(serviceId)}/queue-status`,
     {
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...getAuthHeaders(),
+      },
     }
   )
   if (!response.ok) {
@@ -54,7 +64,7 @@ export async function fetchQueueStatus(serviceId: string): Promise<QueueStatusRe
 }
 
 /**
- * Checks in a citizen into a service queue (idempotent).
+ * Checks in a citizen into a service queue (idempotent, authenticated).
  */
 export async function checkInQueue(
   serviceId: string,
@@ -66,6 +76,7 @@ export async function checkInQueue(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({
       service_id: serviceId,
@@ -87,7 +98,10 @@ export async function fetchUserQueueStatus(sessionId: string): Promise<UserQueue
   const response = await fetch(
     `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/status`,
     {
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...getAuthHeaders(),
+      },
     }
   )
   if (!response.ok) {
@@ -112,6 +126,7 @@ export async function startService(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({
         counter_id: counterId || null,
@@ -140,6 +155,7 @@ export async function completeService(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({
         idempotency_key: idempotencyKey || null,
@@ -168,6 +184,7 @@ export async function cancelQueueSession(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({
         reason: reason || 'Citizen requested departure',

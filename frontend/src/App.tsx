@@ -1,4 +1,14 @@
 import { useEffect, useState } from 'react'
+import type React from 'react'
+import {
+  clearAuthSession,
+  getAuthToken,
+  getMe,
+  getStoredUser,
+  login,
+  logout,
+  register,
+} from './api/auth'
 import { fetchHealth } from './api/health'
 import {
   cancelQueueSession,
@@ -9,6 +19,7 @@ import {
   fetchUserQueueStatus,
   startService,
 } from './api/queue'
+import type { User, UserRole } from './types/auth'
 import type { HealthResponse } from './types/health'
 import type { QueueStatusResponse, Service, UserQueueStatusResponse } from './types/queue'
 
@@ -17,6 +28,17 @@ export function App() {
   const [healthLoading, setHealthLoading] = useState<boolean>(true)
   const [healthError, setHealthError] = useState<string | null>(null)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
+
+  // Auth state
+  const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredUser())
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authEmail, setAuthEmail] = useState<string>('')
+  const [authPassword, setAuthPassword] = useState<string>('')
+  const [authFullName, setAuthFullName] = useState<string>('')
+  const [authRole, setAuthRole] = useState<UserRole>('CITIZEN')
+  const [authLoading, setAuthLoading] = useState<boolean>(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   // Catalog state
   const [services, setServices] = useState<Service[]>([])
@@ -34,6 +56,29 @@ export function App() {
   const [citizenLoading, setCitizenLoading] = useState<boolean>(false)
   const [citizenError, setCitizenError] = useState<string | null>(null)
   const [operatorMessage, setOperatorMessage] = useState<string | null>(null)
+  const [operatorIsError, setOperatorIsError] = useState<boolean>(false)
+
+  // Validate session on load
+  useEffect(() => {
+    const token = getAuthToken()
+    if (token) {
+      getMe()
+        .then((user) => {
+          setCurrentUser(user)
+        })
+        .catch(() => {
+          clearAuthSession()
+          setCurrentUser(null)
+        })
+    }
+  }, [])
+
+  // Sync citizen name when user changes
+  useEffect(() => {
+    if (currentUser?.full_name && !citizenName) {
+      setCitizenName(currentUser.full_name)
+    }
+  }, [currentUser, citizenName])
 
   const checkHealth = async () => {
     setHealthLoading(true)
@@ -88,6 +133,65 @@ export function App() {
     }
   }
 
+  // Auth handlers
+  const handleLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      const resp = await login({ email: authEmail, password: authPassword })
+      setCurrentUser(resp.user)
+      setShowAuthModal(false)
+      setAuthPassword('')
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const handleRegisterSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      const resp = await register({
+        email: authEmail,
+        password: authPassword,
+        full_name: authFullName,
+        role: authRole,
+      })
+      setCurrentUser(resp.user)
+      setShowAuthModal(false)
+      setAuthPassword('')
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const handleQuickLogin = async (email: string, pass: string) => {
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      const resp = await login({ email, password: pass })
+      setCurrentUser(resp.user)
+      setShowAuthModal(false)
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    setCurrentUser(null)
+    setCitizenError(null)
+    setOperatorMessage(null)
+  }
+
   // Handle Join Queue
   const handleJoinQueue = async () => {
     if (!selectedServiceId) return
@@ -137,19 +241,22 @@ export function App() {
     setOperatorMessage(null)
   }
 
-  // Operator Desk Simulation Actions
+  // Operator Desk Actions
   const handleOperatorStart = async () => {
     if (!activeSessionId) return
     setCitizenLoading(true)
     setOperatorMessage(null)
+    setOperatorIsError(false)
     try {
       await startService(activeSessionId)
       setOperatorMessage('Participant moved into service at counter.')
+      setOperatorIsError(false)
       await loadUserStatus(activeSessionId)
       if (selectedServiceId) {
         await loadQueueStatus(selectedServiceId)
       }
     } catch (err) {
+      setOperatorIsError(true)
       setOperatorMessage(`Action failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setCitizenLoading(false)
@@ -160,14 +267,17 @@ export function App() {
     if (!activeSessionId) return
     setCitizenLoading(true)
     setOperatorMessage(null)
+    setOperatorIsError(false)
     try {
       await completeService(activeSessionId)
       setOperatorMessage('Service marked completed! Observation recorded for wait estimator.')
+      setOperatorIsError(false)
       await loadUserStatus(activeSessionId)
       if (selectedServiceId) {
         await loadQueueStatus(selectedServiceId)
       }
     } catch (err) {
+      setOperatorIsError(true)
       setOperatorMessage(`Action failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setCitizenLoading(false)
@@ -208,11 +318,13 @@ export function App() {
   const isTerminalTicket =
     userStatus?.session.status === 'COMPLETED' || userStatus?.session.status === 'CANCELLED'
 
+  const isOperatorOrAdmin = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN'
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       {/* Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
               Q
@@ -222,12 +334,14 @@ export function App() {
                 QueueLess Bharat
               </span>
               <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Milestone 3 Production Flow
+                Milestone 4 Auth &amp; RBAC
               </span>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-1.5 text-xs text-slate-500">
+
+          {/* User Auth Section in Header */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-1.5 text-xs text-slate-500 mr-2">
               <span
                 className={`w-2 h-2 rounded-full ${
                   isHealthy ? 'bg-emerald-500' : 'bg-rose-500'
@@ -235,14 +349,70 @@ export function App() {
               />
               <span>{isHealthy ? 'System Online' : 'System Offline'}</span>
             </div>
-            <a
-              href="https://github.com/Heyyprakhar1/Queless-Bharat"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-slate-500 hover:text-slate-800 transition"
-            >
-              GitHub
-            </a>
+
+            {currentUser ? (
+              <div className="flex items-center space-x-2 bg-slate-100 py-1 px-3 rounded-lg border border-slate-200">
+                <span id="auth-user-badge" className="text-xs font-medium text-slate-800">
+                  {currentUser.full_name || currentUser.email}
+                </span>
+                <span
+                  id="auth-role-badge"
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    currentUser.role === 'ADMIN'
+                      ? 'bg-amber-200 text-amber-900'
+                      : currentUser.role === 'OPERATOR'
+                        ? 'bg-purple-200 text-purple-900'
+                        : 'bg-blue-200 text-blue-900'
+                  }`}
+                >
+                  {currentUser.role}
+                </span>
+                <button
+                  id="btn-logout"
+                  onClick={handleLogout}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-800 ml-2 cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <button
+                  id="btn-open-auth"
+                  onClick={() => {
+                    setAuthMode('login')
+                    setShowAuthModal(true)
+                  }}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition cursor-pointer"
+                >
+                  Sign In
+                </button>
+                <div className="hidden sm:flex items-center space-x-1 text-xs">
+                  <span className="text-slate-400">| Quick:</span>
+                  <button
+                    id="btn-demo-citizen"
+                    onClick={() => handleQuickLogin('citizen@queless.gov.in', 'CitizenPass123!')}
+                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Citizen
+                  </button>
+                  <button
+                    id="btn-demo-operator"
+                    onClick={() => handleQuickLogin('operator@queless.gov.in', 'OperatorPass123!')}
+                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Operator
+                  </button>
+                  <button
+                    id="btn-demo-admin"
+                    onClick={() => handleQuickLogin('admin@queless.gov.in', 'AdminPass123!')}
+                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Admin
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -276,8 +446,20 @@ export function App() {
           </div>
 
           {citizenError && (
-            <div className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm">
+            <div id="citizen-error-msg" className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm">
               <strong>Error:</strong> {citizenError}
+            </div>
+          )}
+
+          {!currentUser && (
+            <div className="p-3 mb-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm flex items-center justify-between">
+              <span>Sign in as a Citizen or select a Quick Demo role to issue verified queue tokens.</span>
+              <button
+                onClick={() => handleQuickLogin('citizen@queless.gov.in', 'CitizenPass123!')}
+                className="font-bold underline ml-2 cursor-pointer"
+              >
+                Sign In as Citizen
+              </button>
             </div>
           )}
 
@@ -310,14 +492,14 @@ export function App() {
 
                 <div>
                   <label htmlFor="citizen-name" className="block text-xs font-semibold text-slate-700 mb-1">
-                    Citizen Identifier / Name (Optional)
+                    Citizen Identifier / Name
                   </label>
                   <input
                     id="citizen-name"
                     type="text"
                     value={citizenName}
                     onChange={(e) => setCitizenName(e.target.value)}
-                    placeholder="e.g. Citizen Rahul"
+                    placeholder="e.g. Citizen Amit Sharma"
                     className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -325,6 +507,7 @@ export function App() {
 
               <div className="pt-2">
                 <button
+                  id="btn-join-queue"
                   onClick={handleJoinQueue}
                   disabled={citizenLoading || services.length === 0}
                   className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
@@ -467,19 +650,34 @@ export function App() {
                 </div>
               </div>
 
-              {/* DEMO OPERATOR DESK SIMULATOR (for testing and advancing ticket lifecycle) */}
+              {/* OPERATOR DESK SIMULATOR (RBAC ENFORCED) */}
               <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Counter Operator Desk (Demo Simulator)
-                  </span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Counter Operator Desk (Staff Controls)
+                    </span>
+                    <span
+                      id="operator-role-indicator"
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        isOperatorOrAdmin
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}
+                    >
+                      {isOperatorOrAdmin
+                        ? `Authorized (${currentUser?.role})`
+                        : `Staff Restricted (Role: ${currentUser?.role || 'Unauthenticated'})`}
+                    </span>
+                  </div>
                   <span className="text-[11px] text-slate-500">
-                    Advance this ticket through the state machine
+                    Advances ticket state (Requires OPERATOR or ADMIN role)
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
+                    id="btn-operator-start"
                     onClick={handleOperatorStart}
                     disabled={citizenLoading || userStatus.session.status !== 'WAITING'}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition cursor-pointer"
@@ -487,6 +685,7 @@ export function App() {
                     Call into Service (Start)
                   </button>
                   <button
+                    id="btn-operator-complete"
                     onClick={handleOperatorComplete}
                     disabled={citizenLoading || userStatus.session.status !== 'IN_SERVICE'}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition cursor-pointer"
@@ -503,7 +702,16 @@ export function App() {
                 </div>
 
                 {operatorMessage && (
-                  <p className="mt-2 text-xs font-medium text-emerald-700">{operatorMessage}</p>
+                  <div
+                    id="operator-message"
+                    className={`mt-3 p-2.5 rounded-lg text-xs font-medium border ${
+                      operatorIsError
+                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {operatorMessage}
+                  </div>
                 )}
               </div>
             </div>
@@ -747,7 +955,7 @@ export function App() {
           {healthError && (
             <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm mb-4">
               <strong>Connection Error:</strong> {healthError}. Ensure backend is running at{' '}
-              <code>http://localhost:8000</code>.
+              <code>http://localhost:8001</code>.
             </div>
           )}
 
@@ -760,10 +968,215 @@ export function App() {
         </div>
       </main>
 
+      {/* AUTH MODAL */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex space-x-3">
+                <button
+                  id="tab-login"
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login')
+                    setAuthError(null)
+                  }}
+                  className={`text-sm font-bold pb-1 cursor-pointer transition ${
+                    authMode === 'login'
+                      ? 'text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  id="tab-register"
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register')
+                    setAuthError(null)
+                  }}
+                  className={`text-sm font-bold pb-1 cursor-pointer transition ${
+                    authMode === 'register'
+                      ? 'text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+              <button
+                id="btn-close-modal"
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            {authError && (
+              <div id="auth-error-msg" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                <strong>Authentication error:</strong> {authError}
+              </div>
+            )}
+
+            {authMode === 'login' ? (
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="input-login-email" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    id="input-login-email"
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="input-login-password" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    id="input-login-password"
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <button
+                  id="btn-submit-login"
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+                >
+                  {authLoading ? 'Signing in...' : 'Sign In'}
+                </button>
+
+                <div className="pt-2 border-t border-slate-100 text-center">
+                  <span className="text-[11px] text-slate-400 block mb-2">Or select a demo account:</span>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      id="btn-modal-demo-citizen"
+                      type="button"
+                      onClick={() => handleQuickLogin('citizen@queless.gov.in', 'CitizenPass123!')}
+                      className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
+                    >
+                      <span>Citizen (Amit Sharma)</span>
+                      <span className="text-[10px] text-slate-400 font-mono">citizen@queless.gov.in</span>
+                    </button>
+                    <button
+                      id="btn-modal-demo-operator"
+                      type="button"
+                      onClick={() => handleQuickLogin('operator@queless.gov.in', 'OperatorPass123!')}
+                      className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
+                    >
+                      <span>Operator (Rajesh)</span>
+                      <span className="text-[10px] text-slate-400 font-mono">operator@queless.gov.in</span>
+                    </button>
+                    <button
+                      id="btn-modal-demo-admin"
+                      type="button"
+                      onClick={() => handleQuickLogin('admin@queless.gov.in', 'AdminPass123!')}
+                      className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
+                    >
+                      <span>System Admin</span>
+                      <span className="text-[10px] text-slate-400 font-mono">admin@queless.gov.in</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="input-register-name" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    id="input-register-name"
+                    type="text"
+                    required
+                    value={authFullName}
+                    onChange={(e) => setAuthFullName(e.target.value)}
+                    placeholder="e.g. Priya Patel"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="input-register-email" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    id="input-register-email"
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="priya@example.com"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="input-register-password" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Password (min 8 chars)
+                  </label>
+                  <input
+                    id="input-register-password"
+                    type="password"
+                    required
+                    minLength={8}
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="select-register-role" className="block text-xs font-semibold text-slate-700 mb-1">
+                    Account Role
+                  </label>
+                  <select
+                    id="select-register-role"
+                    value={authRole}
+                    onChange={(e) => setAuthRole(e.target.value as UserRole)}
+                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="CITIZEN">CITIZEN (Public queue participant)</option>
+                    <option value="OPERATOR">OPERATOR (Desk counter staff)</option>
+                    <option value="ADMIN">ADMIN (System administrator)</option>
+                  </select>
+                </div>
+
+                <button
+                  id="btn-submit-register"
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+                >
+                  {authLoading ? 'Creating account...' : 'Create Account'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6">
         <div className="max-w-5xl mx-auto px-6 text-center text-xs text-slate-400">
-          QueueLess Bharat &mdash; Milestone 3 Production Hardening &amp; Interactive Flow
+          QueueLess Bharat &mdash; Milestone 4 Authentication &amp; RBAC Authorization
         </div>
       </footer>
     </div>

@@ -32,6 +32,7 @@ class QueueService:
         self,
         service_id: uuid.UUID,
         user_id: str | None = None,
+        user_uuid: uuid.UUID | None = None,
         idempotency_key: str | None = None,
     ) -> QueueSession:
         """Atomically checks a participant into a service queue with optional idempotency key.
@@ -39,6 +40,7 @@ class QueueService:
         Args:
             service_id: Target service identifier.
             user_id: Optional client-provided identifier.
+            user_uuid: Optional authenticated user account identifier.
             idempotency_key: Client deduplication key.
 
         Returns:
@@ -66,6 +68,7 @@ class QueueService:
         queue_session = QueueSession(
             service_id=service_id,
             user_id=user_id,
+            user_uuid=user_uuid,
             status=QueueSessionStatus.WAITING,
             checked_in_at=now,
         )

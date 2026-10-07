@@ -14,8 +14,13 @@ Instead of offering unrealistic promises of eliminating physical lines entirely,
 
 ## Project Status
 
-> **Current State:** Milestone 0 Complete — Architecture & Engineering Foundation
-> Foundational architecture, domain models, AWS infrastructure topology, security principles, and engineering standards are established. Application implementation (backend, frontend, infrastructure code) will commence in subsequent milestones.
+> **Current State:** Milestone 4 Complete — Authentication & RBAC Authorization
+>
+> - **Milestone 0:** Architecture & Engineering Foundation (Complete)
+> - **Milestone 1:** Technical Application Foundation — FastAPI + PostgreSQL + Alembic + React + Docker (Complete)
+> - **Milestone 2:** Queue Domain Model & Deterministic Wait-Time Estimator (Complete)
+> - **Milestone 3:** Production Hardening, End-to-End Queue Lifecycle & Playwright Verification (Complete)
+> - **Milestone 4:** Identity Model, Stateless JWT Authentication, RBAC (`CITIZEN`, `OPERATOR`, `ADMIN`), BOLA/IDOR Protection, and Browser E2E Security Suite (Complete)
 
 ---
 
@@ -46,6 +51,10 @@ Detailed engineering specifications and decisions are organized under the [`docs
   - [ADR-0003: Deterministic Queue Estimation](docs/decisions/ADR-0003-deterministic-queue-estimation.md)
   - [ADR-0004: AI as Assistive Layer](docs/decisions/ADR-0004-ai-as-assistive-layer.md)
   - [ADR-0005: Polling-First Real-Time Strategy](docs/decisions/ADR-0005-polling-first-realtime-strategy.md)
+  - [ADR-0006: Identity, Authentication & RBAC Boundary](docs/decisions/ADR-0006-authentication-and-authorization.md)
+- **API Reference:**
+  - [Queue API Specification](docs/api/queue-api.md) — Public and operational queue endpoints.
+  - [Authentication API Reference](docs/api/auth-api.md) — JWT auth, user registration, and RBAC matrix.
 - **Development & Standards:**
   - [Development Workflow](docs/development/development-workflow.md) — Branch naming, Git lifecycle, and Conventional Commits.
   - [Testing Strategy](docs/development/testing-strategy.md) — Test pyramid and queue correctness scenarios.

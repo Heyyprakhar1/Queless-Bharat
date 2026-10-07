@@ -1,0 +1,72 @@
+"""Authentication and user management business logic."""
+
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import create_access_token, get_password_hash, verify_password
+from app.domain.exceptions import DomainError, ResourceNotFoundError
+from app.domain.models import Service, User
+from app.schemas.auth import UserRegisterRequest
+
+
+class AuthService:
+    """Handles user identity registration, verification, and token issuance."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def register_user(self, data: UserRegisterRequest) -> User:
+        """Registers a new platform user with unique email and bcrypt-hashed credentials."""
+        # 1. Uniqueness check
+        stmt = select(User).where(User.email == data.email.lower())
+        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            raise DomainError(f"User with email '{data.email}' already exists")
+
+        # 2. Operator assignment validation
+        if data.assigned_service_id:
+            svc_stmt = select(Service).where(Service.id == data.assigned_service_id)
+            service = (await self.session.execute(svc_stmt)).scalar_one_or_none()
+            if not service:
+                raise ResourceNotFoundError("Service", str(data.assigned_service_id))
+
+        # 3. Secure password hashing
+        hashed_pw = get_password_hash(data.password)
+
+        user = User(
+            email=data.email.lower(),
+            full_name=data.full_name,
+            hashed_password=hashed_pw,
+            role=data.role,
+            is_active=True,
+            assigned_service_id=data.assigned_service_id,
+        )
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+
+    async def authenticate_user(self, email: str, password: str) -> tuple[User, str]:
+        """Validates credentials and issues a signed JWT access token."""
+        stmt = select(User).where(User.email == email.lower())
+        user = (await self.session.execute(stmt)).scalar_one_or_none()
+
+        if not user or not verify_password(password, user.hashed_password):
+            raise DomainError("Invalid email or password")
+
+        if not user.is_active:
+            raise DomainError("Account is inactive")
+
+        token = create_access_token(
+            subject=str(user.id),
+            role=user.role,
+            extra_claims={"email": user.email, "name": user.full_name},
+        )
+        return user, token
+
+    async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
+        """Retrieves user entity by identifier."""
+        stmt = select(User).where(User.id == user_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()

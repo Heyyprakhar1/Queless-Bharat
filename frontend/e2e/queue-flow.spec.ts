@@ -2,11 +2,23 @@ import { expect, test } from '@playwright/test'
 
 const BACKEND_URL = 'http://localhost:8001'
 
+let adminToken: string
 let locationId: string
 
 test.beforeAll(async ({ request }) => {
+  // Login as admin for setup
+  const loginResp = await request.post(`${BACKEND_URL}/api/v1/auth/login`, {
+    data: {
+      email: 'admin@queless.gov.in',
+      password: 'AdminPass123!',
+    },
+  })
+  const loginData = await loginResp.json()
+  adminToken = loginData.access_token
+
   // Ensure base location exists
   const locResp = await request.post(`${BACKEND_URL}/api/v1/locations`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       name: 'AIIMS Central Hospital',
       category: 'hospital',
@@ -23,6 +35,7 @@ test.beforeAll(async ({ request }) => {
 // Helper to create an isolated service and active counter for clean test runs
 async function setupIsolatedService(request: any, name: string) {
   const svcResp = await request.post(`${BACKEND_URL}/api/v1/services`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       location_id: locationId,
       name: `${name} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -32,6 +45,7 @@ async function setupIsolatedService(request: any, name: string) {
   const svc = await svcResp.json()
 
   const cntResp = await request.post(`${BACKEND_URL}/api/v1/counters`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       service_id: svc.id,
       name: 'Counter 1',
@@ -57,10 +71,13 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'OPD Registration')
 
-    // 1. Open frontend in real browser
+    // 1. Open frontend in real browser and authenticate as citizen
     await page.goto('/')
     await expect(page.locator('h1')).toContainText('Predictable Waiting for Public Services')
     await expect(page.locator('text=System Online')).toBeVisible()
+
+    await page.click('#btn-demo-citizen')
+    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
 
     // 2. Select the isolated service
     const serviceSelect = page.locator('#facility-service')
@@ -74,7 +91,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     )
 
     // 4. Click Join Queue / Issue Token
-    await page.click('button:has-text("Join Queue / Issue Token")')
+    await page.click('#btn-join-queue')
 
     const checkInResp = await checkInPromise
     const checkInData = await checkInResp.json()
@@ -88,8 +105,10 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     await expect(page.locator('text=#1')).toBeVisible() // 1-based position
     await expect(page.locator("text=You're next in line!")).toBeVisible()
 
-    // 6. Cross-verify API <-> UI consistency against database via backend request
-    const dbStatusResp = await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`)
+    // 6. Cross-verify API <-> UI consistency against database via backend request using admin token
+    const dbStatusResp = await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
     expect(dbStatusResp.status()).toBe(200)
     const dbStatus = await dbStatusResp.json()
     expect(dbStatus.session.id).toBe(sessionId)
@@ -104,6 +123,9 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Laboratory Intake')
     await page.goto('/')
+    await page.click('#btn-demo-citizen')
+    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Polling Watcher')
 
@@ -115,7 +137,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
       }
     })
 
-    await page.click('button:has-text("Join Queue / Issue Token")')
+    await page.click('#btn-join-queue')
     await expect(page.getByText('WAITING IN LINE', { exact: true })).toBeVisible()
 
     // Wait 12 seconds to observe at least 2 automatic polling cycles (5s interval)
@@ -133,13 +155,17 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Radiology Token')
     await page.goto('/')
+    // Log in as Admin to perform both citizen check-in and operator start/complete
+    await page.click('#btn-demo-admin')
+    await expect(page.locator('#auth-user-badge')).toContainText('System Administrator')
+
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Lifecycle Participant')
 
     const checkInPromise = page.waitForResponse((resp) =>
       resp.url().includes('/api/v1/queue/check-in')
     )
-    await page.click('button:has-text("Join Queue / Issue Token")')
+    await page.click('#btn-join-queue')
     const checkInData = await (await checkInPromise).json()
     const sessionId = checkInData.id
 
@@ -150,17 +176,18 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     const startPromise = page.waitForResponse(
       (resp) => resp.url().includes('/start') && resp.status() === 200
     )
-    await page.click('button:has-text("Call into Service (Start)")')
+    await page.click('#btn-operator-start')
     await startPromise
 
     // Verify UI reflects IN_SERVICE state
     await expect(page.getByText('NOW AT COUNTER (IN SERVICE)', { exact: true })).toBeVisible()
-    // Position is no longer represented as an active line number
     await expect(page.locator('text=currently being served')).toBeVisible()
 
     // Verify DB state
     const inServiceDb = await (
-      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`)
+      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
     ).json()
     expect(inServiceDb.session.status).toBe('IN_SERVICE')
     expect(inServiceDb.position).toBeNull()
@@ -169,7 +196,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     const completePromise = page.waitForResponse(
       (resp) => resp.url().includes('/complete') && resp.status() === 200
     )
-    await page.click('button:has-text("Finish Service (Complete)")')
+    await page.click('#btn-operator-complete')
     await completePromise
 
     // Verify UI reflects COMPLETED terminal state
@@ -179,7 +206,9 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
 
     // Verify DB state
     const completedDb = await (
-      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`)
+      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
     ).json()
     expect(completedDb.session.status).toBe('COMPLETED')
     expect(completedDb.position).toBeNull()
@@ -191,13 +220,16 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Emergency Desk')
     await page.goto('/')
+    await page.click('#btn-demo-citizen')
+    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Leaving Early')
 
     const checkInPromise = page.waitForResponse((resp) =>
       resp.url().includes('/api/v1/queue/check-in')
     )
-    await page.click('button:has-text("Join Queue / Issue Token")')
+    await page.click('#btn-join-queue')
     const checkInData = await (await checkInPromise).json()
     const sessionId = checkInData.id
 
@@ -215,12 +247,14 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     await expect(page.locator('text=lifecycle completed')).toBeVisible()
 
     // Verify operator actions are disabled for cancelled ticket
-    const startButton = page.locator('button:has-text("Call into Service (Start)")')
+    const startButton = page.locator('#btn-operator-start')
     await expect(startButton).toBeDisabled()
 
     // Verify DB state
     const cancelledDb = await (
-      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`)
+      await request.get(`${BACKEND_URL}/api/v1/queue/${sessionId}/status`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
     ).json()
     expect(cancelledDb.session.status).toBe('CANCELLED')
     expect(cancelledDb.position).toBeNull()
@@ -232,13 +266,16 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Billing Counter')
     await page.goto('/')
+    await page.click('#btn-demo-citizen')
+    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Refresh Test')
 
     const checkInPromise = page.waitForResponse((resp) =>
       resp.url().includes('/api/v1/queue/check-in')
     )
-    await page.click('button:has-text("Join Queue / Issue Token")')
+    await page.click('#btn-join-queue')
     const checkInData = await (await checkInPromise).json()
     const sessionId = checkInData.id
 
@@ -258,6 +295,8 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     page,
   }) => {
     await page.goto('/')
+    await page.click('#btn-demo-citizen')
+    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
 
     // Trigger an error by requesting a non-existent ticket in localStorage
     await page.evaluate(() => {
@@ -266,10 +305,10 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     await page.reload()
 
     // The UI should display the error gracefully without a white-screen crash
-    await expect(page.locator('text=Error:')).toBeVisible()
-    await expect(
-      page.locator("text=QueueSession with identifier '00000000-0000-0000-0000-000000000000' was not found")
-    ).toBeVisible()
+    await expect(page.locator('#citizen-error-msg')).toBeVisible()
+    await expect(page.locator('#citizen-error-msg')).toContainText(
+      "QueueSession with identifier '00000000-0000-0000-0000-000000000000' was not found"
+    )
 
     // Header and navigation still functional
     await expect(page.locator('h1')).toContainText('Predictable Waiting for Public Services')
