@@ -73,7 +73,7 @@ QueueLess Bharat packages both frontend and backend into minimal, production-har
 | Service | Base Image | Multi-Stage | Non-Root User | Size | Healthcheck Probe |
 |---|---|:---:|:---:|:---:|---|
 | **Backend** | `python:3.12-slim` | Yes (`uv` builder + runtime) | `appuser` (UID 999) | ~233 MB | `python -c "urllib.request.urlopen('/health')"` |
-| **Frontend** | `nginx:1.27-alpine` | Yes (`node:22` builder + runtime) | `nginx` (UID 101) | ~48.8 MB | `wget -q --spider http://localhost:8080/healthz` |
+| **Frontend** | `nginx:1.27-alpine` | Yes (`node:22` builder + runtime) | `nginx` (UID 101) | ~48.8 MB | `wget -q --spider http://127.0.0.1:8080/healthz` |
 
 ---
 

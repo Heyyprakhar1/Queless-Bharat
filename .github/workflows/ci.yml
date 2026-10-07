@@ -314,21 +314,21 @@ jobs:
           fi
 
       - name: Run Trivy Vulnerability Scanner on Backend Image
-        uses: aquasecurity/trivy-action@0.29.0
-        with:
-          image-ref: queless-backend:${{ steps.vars.outputs.short_sha }}
-          format: "table"
-          exit-code: "0" # Non-blocking on base OS advisories; reports findings in CI step log
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          severity: "CRITICAL,HIGH"
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --format table \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            queless-backend:${{ steps.vars.outputs.short_sha }}
 
       - name: Run Trivy Vulnerability Scanner on Frontend Image
-        uses: aquasecurity/trivy-action@0.29.0
-        with:
-          image-ref: queless-frontend:${{ steps.vars.outputs.short_sha }}
-          format: "table"
-          exit-code: "0"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          severity: "CRITICAL,HIGH"
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --format table \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            queless-frontend:${{ steps.vars.outputs.short_sha }}
