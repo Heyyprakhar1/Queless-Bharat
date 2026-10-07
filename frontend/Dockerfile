@@ -26,8 +26,8 @@ RUN npm run build
 # ==============================================================================
 FROM nginx:1.27-alpine AS runner
 
-# Remove default boilerplate files
-RUN rm -rf /usr/share/nginx/html/*
+# Patch base OS packages and remove default boilerplate
+RUN apk --no-cache upgrade && rm -rf /usr/share/nginx/html/*
 
 # Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,4 +1,4 @@
-# ADR-0007: Container Packaging, Docker Compose & CI/CD Release Engineering
+# ADR-0007: Container Packaging, Docker Compose & CI/Release Engineering Foundation
 
 ## Status
 Accepted
@@ -12,6 +12,9 @@ To establish a production-grade DevOps baseline ready for future cloud infrastru
 3. Unprivileged (non-root) execution across all container runtimes.
 4. Reproducible multi-service local deployment via Docker Compose with genuine healthcheck dependencies (`service_healthy`).
 5. Automated Continuous Integration (CI) on GitHub Actions validating linting, formatting, type safety, database migrations, unit/integration tests, real browser E2E workflows, Docker builds, and container vulnerability scanning.
+6. Deterministic, immutable SHA-based image tagging standards for release traceability.
+
+*Note: Automated Continuous Delivery (CD) to cloud infrastructure (such as AWS ECS/EKS deployments) is explicitly out-of-scope for Milestone 5 and will be implemented in subsequent cloud infrastructure milestones.*
 
 ## Decision
 
@@ -28,13 +31,18 @@ To establish a production-grade DevOps baseline ready for future cloud infrastru
 
 #### Frontend Container (`queless-frontend`)
 - **Base Builder:** `node:22-alpine` compiling TypeScript and bundling static assets via Vite (`npm run build`).
-- **Runtime Stage:** `nginx:1.27-alpine` serving pre-rendered static artifacts. No Node.js runtime or devDependencies in the final image.
+- **Runtime Stage:** `nginx:1.27-alpine` serving pre-rendered static artifacts. No Node.js runtime or devDependencies in the final image. Base Alpine packages upgraded via `apk --no-cache upgrade` to patch known OS vulnerabilities.
 - **Reverse Proxy & Routing:** Custom `nginx.conf` routing `/api/` to the backend service, providing SPA fallback (`try_files $uri $uri/ /index.html;`), static caching (`Cache-Control: public, max-age=31536000`), and Gzip compression.
-- **Security & Privilege:** Runs as non-root user `nginx` listening on port `8080`.
+- **Security & Privilege:** Runs as non-root user `nginx` listening on unprivileged port `8080`.
 - **Image Footprint:** ~48.8 MB.
-- **Healthcheck:** Probes dedicated `/healthz` endpoint.
+- **Healthcheck:** Probes dedicated `/healthz` endpoint using built-in Alpine `wget`.
 
-### 2. Docker Compose Environment (`docker-compose.yml`)
+### 2. Database Migration Strategy & Multi-Instance Decoupling
+- **Local Single-Instance Behavior:** The backend entrypoint runs `alembic upgrade head` on startup when `RUN_MIGRATIONS=true` (enabled by default in `docker-compose.yml`).
+- **Safe Disable Mechanism:** Setting `RUN_MIGRATIONS=false` safely skips migration execution and proceeds directly to running Uvicorn.
+- **Multi-Instance Production Decoupling:** In future distributed cloud environments (e.g., autoscaled AWS ECS tasks or Kubernetes pods), running migrations concurrently across multiple container replicas causes migration lock contention and schema race conditions. For multi-instance production deployments, database migrations must be decoupled into an isolated one-off release execution (e.g., ECS run-task or Kubernetes Job) with `RUN_MIGRATIONS=false` enforced on all long-running web tasks.
+
+### 3. Docker Compose Environment (`docker-compose.yml`)
 - Orchestrates `postgres`, `backend`, and `frontend` on a dedicated bridge network (`queless-network`).
 - Uses healthcheck conditions (`condition: service_healthy`) rather than superficial container start dependencies:
   - `backend` waits until PostgreSQL passes `pg_isready`.
@@ -42,7 +50,7 @@ To establish a production-grade DevOps baseline ready for future cloud infrastru
 - Persistent database state managed via named volume `queless-postgres-data`.
 - Environment template provided in `.env.example` with safe development defaults and explicit secret placeholders.
 
-### 3. GitHub Actions CI Pipeline (`.github/workflows/ci.yml`)
+### 4. GitHub Actions CI Pipeline (`.github/workflows/ci.yml`)
 Four automated pipeline stages triggered on every push and pull request to `main`:
 1. **Static Validation:**
    - Backend: Ruff lint (`ruff check`) and formatting check (`ruff format --check`).
@@ -61,15 +69,17 @@ Four automated pipeline stages triggered on every push and pull request to `main
    - Builds both backend and frontend images using Docker Buildx.
    - Tags images deterministically using Git commit SHA (`${{ github.sha }}`) and short SHA.
    - Verifies non-root runtime enforcement (`whoami` must equal `appuser` and `nginx`).
-   - Executes Trivy vulnerability scanner (`aquasecurity/trivy-action`) to scan OS packages and library dependencies for critical CVEs.
+   - Executes Aqua Security Trivy vulnerability scanner to scan OS packages and library dependencies for critical and high CVEs.
 
 ## Consequences
 
 ### Positive
 - **Deterministic & Reproducible:** Eliminates "works on my machine" issues across developers and automated environments.
-- **Cloud-Ready:** Images and tagging strategy can be plugged directly into AWS ECR, ECS, or EKS pipelines in subsequent milestones.
+- **Release-Ready:** Immutable SHA-based tags provide cryptographic provenance back to git commits.
+- **Cloud-Ready Foundation:** Images and tagging standards can be plugged directly into AWS ECR, ECS, or EKS pipelines in subsequent cloud milestones.
 - **Security by Default:** Non-root users, minimal Alpine/Slim base images, zero development dependencies in production runtimes, and automated Trivy CVE scans.
-- **Automated Gating:** Flawed code, broken migrations, or security regressions are automatically blocked from merging or releasing.
+- **Automated Gating:** Flawed code, broken migrations, or security regressions are automatically blocked from merging.
 
 ### Negative / Tradeoffs
 - **Build Duration:** Multi-stage container builds and Playwright browser installation add ~2–3 minutes to CI pipeline runs (mitigated by GitHub Actions dependency caching for `uv` and `npm`).
+- **No Cloud Deployment Yet:** Milestone 5 establishes container packaging, CI verification, and release engineering only; automated CD to cloud environments remains deferred to upcoming cloud infrastructure milestones.
