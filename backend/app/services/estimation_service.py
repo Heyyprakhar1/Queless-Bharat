@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.enums import CounterStatus, QueueSessionStatus
+from app.domain.enums import CounterStatus, EstimateConfidence, QueueSessionStatus
 from app.domain.exceptions import ResourceNotFoundError
 from app.domain.models import (
     Counter,
@@ -22,8 +22,10 @@ from app.engine.estimator import (
     WaitEstimate,
 )
 from app.schemas.queue import (
+    QueueSessionResponse,
     QueueStateSummary,
     QueueStatusResponse,
+    UserQueueStatusResponse,
     WaitEstimatePayload,
 )
 from app.schemas.service import ServiceResponse
@@ -188,5 +190,205 @@ class EstimationService:
             ),
             people_ahead=waiting_count,
             active_counters=effective_counters,
+            estimated_wait=estimate_payload,
+        )
+
+    async def get_user_queue_status(
+        self,
+        session_id: uuid.UUID,
+    ) -> UserQueueStatusResponse:
+        """Retrieves user-centric queue status including position and personal wait estimate."""
+        # 1. Verify queue session exists
+        sess_stmt = select(QueueSession).where(QueueSession.id == session_id)
+        queue_session = (await self.session.execute(sess_stmt)).scalar_one_or_none()
+        if not queue_session:
+            raise ResourceNotFoundError("QueueSession", str(session_id))
+
+        # 2. Verify service exists
+        svc_stmt = select(Service).where(Service.id == queue_session.service_id)
+        service = (await self.session.execute(svc_stmt)).scalar_one_or_none()
+        if not service:
+            raise ResourceNotFoundError("Service", str(queue_session.service_id))
+
+        now = datetime.now(UTC)
+
+        # 3. Overall queue state metrics
+        waiting_stmt = (
+            select(func.count())
+            .select_from(QueueSession)
+            .where(
+                QueueSession.service_id == service.id,
+                QueueSession.status == QueueSessionStatus.WAITING,
+            )
+        )
+        waiting_count = (await self.session.execute(waiting_stmt)).scalar() or 0
+
+        in_service_stmt = (
+            select(func.count())
+            .select_from(QueueSession)
+            .where(
+                QueueSession.service_id == service.id,
+                QueueSession.status == QueueSessionStatus.IN_SERVICE,
+            )
+        )
+        in_service_count = (await self.session.execute(in_service_stmt)).scalar() or 0
+
+        # Active counters
+        counter_stmt = (
+            select(func.count())
+            .select_from(Counter)
+            .where(
+                Counter.service_id == service.id,
+                Counter.status == CounterStatus.ACTIVE,
+            )
+        )
+        active_counters_count = (await self.session.execute(counter_stmt)).scalar() or 0
+
+        # Latest observation fallback for active counters
+        obs_stmt = (
+            select(WaitObservation)
+            .where(WaitObservation.service_id == service.id)
+            .order_by(WaitObservation.observed_at.desc())
+            .limit(1)
+        )
+        latest_observation = (await self.session.execute(obs_stmt)).scalar_one_or_none()
+
+        effective_counters = active_counters_count
+        if (
+            effective_counters == 0
+            and latest_observation
+            and latest_observation.active_counters > 0
+        ):
+            effective_counters = latest_observation.active_counters
+
+        queue_state = QueueStateSummary(
+            waiting_count=waiting_count,
+            in_service_count=in_service_count,
+            active_counters=effective_counters,
+        )
+
+        # 4. Handle Terminal & In-Service States
+        if queue_session.status == QueueSessionStatus.IN_SERVICE:
+            return UserQueueStatusResponse(
+                session=QueueSessionResponse.model_validate(queue_session),
+                service=ServiceResponse.model_validate(service),
+                position=None,
+                people_ahead=0,
+                queue_state=queue_state,
+                estimated_wait=WaitEstimatePayload(
+                    is_available=True,
+                    lower_minutes=0.0,
+                    upper_minutes=0.0,
+                    expected_minutes=0.0,
+                    confidence=EstimateConfidence.HIGH,
+                    sample_size=0,
+                    model_version=self.estimator.model_version,
+                    reason="Currently in service",
+                ),
+            )
+
+        if queue_session.status == QueueSessionStatus.COMPLETED:
+            return UserQueueStatusResponse(
+                session=QueueSessionResponse.model_validate(queue_session),
+                service=ServiceResponse.model_validate(service),
+                position=None,
+                people_ahead=0,
+                queue_state=queue_state,
+                estimated_wait=WaitEstimatePayload(
+                    is_available=False,
+                    reason="Service completed",
+                    model_version=self.estimator.model_version,
+                ),
+            )
+
+        if queue_session.status == QueueSessionStatus.CANCELLED:
+            return UserQueueStatusResponse(
+                session=QueueSessionResponse.model_validate(queue_session),
+                service=ServiceResponse.model_validate(service),
+                position=None,
+                people_ahead=0,
+                queue_state=queue_state,
+                estimated_wait=WaitEstimatePayload(
+                    is_available=False,
+                    reason="Queue session cancelled",
+                    model_version=self.estimator.model_version,
+                ),
+            )
+
+        # 5. WAITING State: calculate FIFO people ahead and personalized wait
+        people_ahead_stmt = (
+            select(func.count())
+            .select_from(QueueSession)
+            .where(
+                QueueSession.service_id == service.id,
+                QueueSession.status == QueueSessionStatus.WAITING,
+                (QueueSession.checked_in_at < queue_session.checked_in_at)
+                | (
+                    (QueueSession.checked_in_at == queue_session.checked_in_at)
+                    & (QueueSession.id < queue_session.id)
+                ),
+            )
+        )
+        people_ahead = (await self.session.execute(people_ahead_stmt)).scalar() or 0
+        position = people_ahead + 1
+
+        # Completed sessions for throughput
+        ss_stmt = (
+            select(ServiceSession)
+            .where(
+                ServiceSession.service_id == service.id,
+                ServiceSession.completed_at.is_not(None),
+                ServiceSession.duration_seconds.is_not(None),
+            )
+            .order_by(ServiceSession.completed_at.desc())
+            .limit(50)
+        )
+        completed_sessions = list((await self.session.execute(ss_stmt)).scalars().all())
+
+        latest_timestamps: list[datetime] = []
+        if completed_sessions and completed_sessions[0].completed_at:
+            latest_timestamps.append(completed_sessions[0].completed_at)
+        if latest_observation and latest_observation.observed_at:
+            latest_timestamps.append(latest_observation.observed_at)
+
+        freshness_seconds = 0
+        if latest_timestamps:
+            freshness_seconds = max(0, int((now - max(latest_timestamps)).total_seconds()))
+
+        durations_sec = [
+            float(s.duration_seconds) for s in completed_sessions if s.duration_seconds is not None
+        ]
+
+        # Calculate personalized wait estimate using user's people_ahead
+        est_input = EstimatorInput(
+            people_ahead=people_ahead,
+            active_counters=effective_counters,
+            completed_service_durations_seconds=durations_sec,
+            data_freshness_seconds=freshness_seconds,
+            observation_wait_minutes=latest_observation.reported_wait_minutes
+            if latest_observation
+            else None,
+        )
+        estimate_result = self.estimator.estimate(est_input)
+
+        estimate_payload = WaitEstimatePayload(
+            is_available=estimate_result.is_available,
+            lower_minutes=estimate_result.lower_minutes,
+            upper_minutes=estimate_result.upper_minutes,
+            expected_minutes=estimate_result.expected_minutes,
+            confidence=estimate_result.confidence,
+            sample_size=estimate_result.sample_size,
+            freshness_seconds=estimate_result.data_freshness_seconds,
+            model_version=estimate_result.model_version,
+            reason=estimate_result.reason,
+            supporting_signals=estimate_result.supporting_signals,
+        )
+
+        return UserQueueStatusResponse(
+            session=QueueSessionResponse.model_validate(queue_session),
+            service=ServiceResponse.model_validate(service),
+            position=position,
+            people_ahead=people_ahead,
+            queue_state=queue_state,
             estimated_wait=estimate_payload,
         )

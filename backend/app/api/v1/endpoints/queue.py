@@ -13,7 +13,9 @@ from app.schemas.queue import (
     CompleteServiceRequest,
     QueueSessionResponse,
     StartServiceRequest,
+    UserQueueStatusResponse,
 )
+from app.services.estimation_service import EstimationService
 from app.services.queue_service import QueueService
 
 router = APIRouter(prefix="/queue", tags=["Queue"])
@@ -43,6 +45,16 @@ async def get_queue_session(
     service = QueueService(db)
     queue_session = await service.get_queue_session(session_id)
     return QueueSessionResponse.model_validate(queue_session)
+
+
+@router.get("/{session_id}/status", response_model=UserQueueStatusResponse)
+async def get_user_queue_status(
+    session_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserQueueStatusResponse:
+    """Retrieve user-centric queue status including line position and wait estimate."""
+    estimation_svc = EstimationService(db)
+    return await estimation_svc.get_user_queue_status(session_id)
 
 
 @router.post("/{session_id}/start", response_model=QueueSessionResponse)

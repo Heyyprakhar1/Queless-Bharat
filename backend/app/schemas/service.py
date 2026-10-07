@@ -11,6 +11,8 @@ from app.domain.enums import ServiceStatus
 class ServiceCreate(BaseModel):
     """Payload to register a new service queue under a location."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     location_id: uuid.UUID
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None

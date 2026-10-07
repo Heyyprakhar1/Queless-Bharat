@@ -23,6 +23,30 @@ export interface Service {
   updated_at: string
 }
 
+export interface Counter {
+  id: string
+  service_id: string
+  name: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type QueueSessionStatus = 'WAITING' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED'
+
+export interface QueueSession {
+  id: string
+  service_id: string
+  user_id?: string | null
+  status: QueueSessionStatus
+  checked_in_at: string
+  service_started_at?: string | null
+  completed_at?: string | null
+  cancelled_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface WaitEstimate {
   is_available: boolean
   lower_minutes?: number | null
@@ -47,5 +71,14 @@ export interface QueueStatusResponse {
   queue_state: QueueStateSummary
   people_ahead: number
   active_counters: number
+  estimated_wait: WaitEstimate
+}
+
+export interface UserQueueStatusResponse {
+  session: QueueSession
+  service: Service
+  position: number | null
+  people_ahead: number
+  queue_state: QueueStateSummary
   estimated_wait: WaitEstimate
 }

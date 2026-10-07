@@ -11,6 +11,8 @@ from app.domain.enums import CounterStatus
 class CounterCreate(BaseModel):
     """Payload to register a new counter window under a service."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     service_id: uuid.UUID
     name: str = Field(..., min_length=1, max_length=100)
     status: CounterStatus = CounterStatus.ACTIVE

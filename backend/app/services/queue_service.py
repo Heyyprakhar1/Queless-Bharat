@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.enums import QueueEventType, QueueSessionStatus
+from app.domain.enums import (
+    CounterStatus,
+    QueueEventType,
+    QueueSessionStatus,
+    ServiceStatus,
+)
 from app.domain.exceptions import (
     DomainError,
     DuplicateIdempotencyKeyError,
@@ -49,11 +54,13 @@ class QueueService:
                     return await self.get_queue_session(existing_event.queue_session_id)
                 raise DuplicateIdempotencyKeyError(idempotency_key)
 
-        # 2. Verify service exists
+        # 2. Verify service exists and is active
         svc_stmt = select(Service).where(Service.id == service_id)
         service = (await self.session.execute(svc_stmt)).scalar_one_or_none()
         if not service:
             raise ResourceNotFoundError("Service", str(service_id))
+        if service.status != ServiceStatus.ACTIVE:
+            raise DomainError(f"Service '{service_id}' is inactive and cannot accept check-ins")
 
         now = datetime.now(UTC)
         queue_session = QueueSession(
@@ -131,6 +138,10 @@ class QueueService:
             if counter.service_id != queue_session.service_id:
                 raise DomainError(
                     f"Counter {counter_id} does not belong to service {queue_session.service_id}"
+                )
+            if counter.status != CounterStatus.ACTIVE:
+                raise DomainError(
+                    f"Counter {counter_id} is not active (current status: {counter.status})"
                 )
 
         now = datetime.now(UTC)

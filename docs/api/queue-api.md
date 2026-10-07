@@ -1,4 +1,4 @@
-# QueueLess Bharat API Specification (Milestone 2)
+# QueueLess Bharat API Specification (Milestone 3 Production Hardened)
 
 > **Base URL:** `/api/v1`  
 > **Protocol:** HTTP/1.1 REST  
@@ -243,3 +243,85 @@ Database exceptions are never leaked directly to API clients.
 ```
 - **Allowed Transition:** `WAITING` $\rightarrow$ `CANCELLED`.
 - **Errors:** `400 Bad Request` if current status is not `WAITING`.
+
+---
+
+## 6. User-Centric Queue Status & Live Polling
+
+### Get User Queue Status
+- **Endpoint:** `GET /api/v1/queue/{session_id}/status`
+- **Status:** `200 OK` (or `404 Not Found`)
+- **Description:** Returns real-time user-centric status including the participant's exact 1-based position in line, the count of participants strictly ahead in FIFO order, aggregate facility metrics, and a personalized deterministic wait-time estimate.
+- **Response Body:**
+```json
+{
+  "session": {
+    "id": "7b38b7ed-5db5-4683-8a99-455c21425689",
+    "service_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "user_id": "citizen_42",
+    "status": "WAITING",
+    "checked_in_at": "2026-10-07T10:00:00Z",
+    "service_started_at": null,
+    "completed_at": null,
+    "cancelled_at": null,
+    "created_at": "2026-10-07T10:00:00Z",
+    "updated_at": "2026-10-07T10:00:00Z"
+  },
+  "service": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "location_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "name": "OPD Registration",
+    "description": "General Patient Intake Counter",
+    "status": "active",
+    "created_at": "2026-10-07T09:00:00Z",
+    "updated_at": "2026-10-07T09:00:00Z"
+  },
+  "position": 3,
+  "people_ahead": 2,
+  "queue_state": {
+    "waiting_count": 5,
+    "in_service_count": 2,
+    "active_counters": 2
+  },
+  "estimated_wait": {
+    "is_available": true,
+    "lower_minutes": 10.0,
+    "upper_minutes": 16.0,
+    "expected_minutes": 12.5,
+    "confidence": "HIGH",
+    "sample_size": 18,
+    "freshness_seconds": 25,
+    "model_version": "v1-deterministic",
+    "reason": null,
+    "supporting_signals": {
+      "arrival_rate_per_min": 0.45,
+      "service_rate_per_min": 0.35,
+      "iqr_outliers_rejected": 1
+    }
+  }
+}
+```
+
+#### Line Position Semantics
+- `WAITING`: `position` is a 1-based positive integer strictly evaluated by `checked_in_at` (FIFO) and tie-broken by session `id`. `people_ahead` = `position - 1`.
+- `IN_SERVICE`: `position` is `null`, `people_ahead` is `0`, with `estimated_wait` marked as currently being served (`0.0` minutes).
+- `COMPLETED` / `CANCELLED`: `position` is `null`, `people_ahead` is `0`, `estimated_wait` is unavailable (`is_available: false`).
+
+---
+
+## 7. Production Hardening Guarantees (Milestone 3)
+
+1. **Input Normalization & Boundary Checks:**
+   - All string inputs (names, addresses, cities, states, user IDs, reasons) automatically strip leading and trailing whitespace.
+   - Pydantic models reject empty strings or whitespace-only inputs for required fields (`min_length=1`).
+2. **Active Status Preconditions:**
+   - Attempting to check in to an inactive service returns `400 Bad Request`.
+   - Attempting to start service using an inactive or maintenance counter returns `400 Bad Request`.
+3. **Deterministic Zero-Fabrication Invariant:**
+   - Wait times are strictly mathematical (ADR-0003 Little's Law / empirical throughput).
+   - If active counters are zero, or historical completions are fewer than minimum sample threshold, `is_available` returns `false` with explicit `reason`.
+   - Zero-minute wait times are never fabricated for unestimable queues.
+4. **Terminal State Immutability:**
+   - `COMPLETED` and `CANCELLED` are immutable terminal states; transitions out of terminal states are strictly rejected (`400 Bad Request`).
+5. **Idempotency Deduplication:**
+   - Idempotency keys protect against network retries and duplicate operations across check-in, start-service, complete-service, and cancellation.

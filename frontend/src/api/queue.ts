@@ -1,4 +1,10 @@
-import type { Location, QueueStatusResponse, Service } from '../types/queue'
+import type {
+  Location,
+  QueueSession,
+  QueueStatusResponse,
+  Service,
+  UserQueueStatusResponse,
+} from '../types/queue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
@@ -43,6 +49,135 @@ export async function fetchQueueStatus(serviceId: string): Promise<QueueStatusRe
   )
   if (!response.ok) {
     throw new Error(`Failed to fetch queue status: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Checks in a citizen into a service queue (idempotent).
+ */
+export async function checkInQueue(
+  serviceId: string,
+  userId?: string,
+  idempotencyKey?: string
+): Promise<QueueSession> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/queue/check-in`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      service_id: serviceId,
+      user_id: userId || null,
+      idempotency_key: idempotencyKey || null,
+    }),
+  })
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to check in: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Fetches user-specific queue status including 1-based position and personal estimate.
+ */
+export async function fetchUserQueueStatus(sessionId: string): Promise<UserQueueStatusResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/status`,
+    {
+      headers: { Accept: 'application/json' },
+    }
+  )
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to fetch ticket status: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Starts service for a waiting participant (operator desk action).
+ */
+export async function startService(
+  sessionId: string,
+  counterId?: string,
+  idempotencyKey?: string
+): Promise<QueueSession> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/start`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        counter_id: counterId || null,
+        idempotency_key: idempotencyKey || null,
+      }),
+    }
+  )
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to start service: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Completes service for an active participant (operator desk action).
+ */
+export async function completeService(
+  sessionId: string,
+  idempotencyKey?: string
+): Promise<QueueSession> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/complete`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        idempotency_key: idempotencyKey || null,
+      }),
+    }
+  )
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to complete service: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Cancels a queue session (citizen departure or abandonment).
+ */
+export async function cancelQueueSession(
+  sessionId: string,
+  reason?: string,
+  idempotencyKey?: string
+): Promise<QueueSession> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        reason: reason || 'Citizen requested departure',
+        idempotency_key: idempotencyKey || null,
+      }),
+    }
+  )
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to cancel session: HTTP ${response.status}`)
   }
   return response.json()
 }

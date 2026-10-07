@@ -11,6 +11,8 @@ from app.domain.enums import LocationCategory, LocationStatus
 class LocationCreate(BaseModel):
     """Payload to register a new physical location."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(..., min_length=1, max_length=255)
     category: LocationCategory
     address: str = Field(..., min_length=1)

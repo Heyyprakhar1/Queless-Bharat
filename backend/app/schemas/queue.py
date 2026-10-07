@@ -13,9 +13,12 @@ from app.schemas.service import ServiceResponse
 class CheckInRequest(BaseModel):
     """Payload to check into a service queue."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     service_id: uuid.UUID
     user_id: str | None = Field(
         default=None,
+        max_length=100,
         description="Optional client-provided user identifier (no auth subsystem required)",
     )
     idempotency_key: str | None = Field(
@@ -27,6 +30,8 @@ class CheckInRequest(BaseModel):
 
 class StartServiceRequest(BaseModel):
     """Payload to initiate active service for a waiting queue participant."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     counter_id: uuid.UUID | None = Field(
         default=None,
@@ -42,6 +47,8 @@ class StartServiceRequest(BaseModel):
 class CompleteServiceRequest(BaseModel):
     """Payload to complete an active service session."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     idempotency_key: str | None = Field(
         default=None,
         max_length=128,
@@ -51,6 +58,8 @@ class CompleteServiceRequest(BaseModel):
 
 class CancelQueueRequest(BaseModel):
     """Payload to cancel a waiting queue session."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     reason: str | None = Field(default=None, max_length=255)
     idempotency_key: str | None = Field(
@@ -136,4 +145,21 @@ class QueueStatusResponse(BaseModel):
     queue_state: QueueStateSummary
     people_ahead: int
     active_counters: int
+    estimated_wait: WaitEstimatePayload
+
+
+class UserQueueStatusResponse(BaseModel):
+    """User-centric queue status including personal position and wait estimate."""
+
+    session: QueueSessionResponse
+    service: ServiceResponse
+    position: int | None = Field(
+        default=None,
+        description="1-based position in waiting line; None if in service, completed, or cancelled",
+    )
+    people_ahead: int = Field(
+        default=0,
+        description="Number of participants waiting ahead of this specific user",
+    )
+    queue_state: QueueStateSummary
     estimated_wait: WaitEstimatePayload
