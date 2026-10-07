@@ -14,15 +14,33 @@ Instead of offering unrealistic promises of eliminating physical lines entirely,
 
 ## Project Status
 
-> **Current State:** Milestone 4 Complete — Authentication & RBAC Authorization
+> **Current State:** Milestone 5 Complete — Docker, CI/CD & Release Engineering
 >
 > - **Milestone 0:** Architecture & Engineering Foundation (Complete)
 > - **Milestone 1:** Technical Application Foundation — FastAPI + PostgreSQL + Alembic + React + Docker (Complete)
 > - **Milestone 2:** Queue Domain Model & Deterministic Wait-Time Estimator (Complete)
 > - **Milestone 3:** Production Hardening, End-to-End Queue Lifecycle & Playwright Verification (Complete)
 > - **Milestone 4:** Identity Model, Stateless JWT Authentication, RBAC (`CITIZEN`, `OPERATOR`, `ADMIN`), BOLA/IDOR Protection, and Browser E2E Security Suite (Complete)
+> - **Milestone 5:** Production Docker Multi-Stage Images, Non-Root Containers, Docker Compose Stack, and Automated GitHub Actions CI/CD Pipeline with Trivy Security Scanning (Complete)
 
 ---
+
+## Quickstart (Docker Compose)
+
+Launch the complete QueueLess Bharat application stack (PostgreSQL + Backend API + Frontend Nginx) with a single command:
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Start the reproducible stack with health-gated readiness
+docker compose up -d --build
+
+# 3. Access applications
+# Frontend Web App:  http://localhost:80
+# Backend API:       http://localhost:8000/api/v1
+# API Docs:          http://localhost:8000/api/v1/docs
+```
 
 ## Vision & Architecture Principles
 
@@ -52,10 +70,12 @@ Detailed engineering specifications and decisions are organized under the [`docs
   - [ADR-0004: AI as Assistive Layer](docs/decisions/ADR-0004-ai-as-assistive-layer.md)
   - [ADR-0005: Polling-First Real-Time Strategy](docs/decisions/ADR-0005-polling-first-realtime-strategy.md)
   - [ADR-0006: Identity, Authentication & RBAC Boundary](docs/decisions/ADR-0006-authentication-and-authorization.md)
+  - [ADR-0007: Container Packaging & CI/CD Release Engineering](docs/decisions/ADR-0007-docker-ci-cd-and-release-engineering.md)
 - **API Reference:**
   - [Queue API Specification](docs/api/queue-api.md) — Public and operational queue endpoints.
   - [Authentication API Reference](docs/api/auth-api.md) — JWT auth, user registration, and RBAC matrix.
 - **Development & Standards:**
+  - [CI/CD & Release Engineering Guide](docs/development/ci-cd-and-release-engineering.md) — Docker architecture, Compose, and GitHub Actions CI.
   - [Development Workflow](docs/development/development-workflow.md) — Branch naming, Git lifecycle, and Conventional Commits.
   - [Testing Strategy](docs/development/testing-strategy.md) — Test pyramid and queue correctness scenarios.
   - [Environment Configuration](docs/development/environment-configuration.md) — Twelve-factor configuration and secrets management.

@@ -9,3 +9,8 @@ htmlcov
 .env
 .env.*
 !.env.example
+tests
+.git
+.github
+Dockerfile
+.dockerignore
