@@ -3,13 +3,21 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.api.v1.endpoints.health import check_health
 from app.core.config import get_settings
 from app.core.logging import LoggingMiddleware, get_logger, setup_logging
+from app.domain.exceptions import (
+    DomainError,
+    DuplicateIdempotencyKeyError,
+    EstimationUnavailableError,
+    InvalidStateTransitionError,
+    ResourceNotFoundError,
+)
 
 settings = get_settings()
 logger = get_logger("app")
@@ -52,6 +60,58 @@ app.add_middleware(
 
 # Structured request/response logging middleware
 app.add_middleware(LoggingMiddleware)
+
+
+# Domain exception handlers for clean RESTful error mapping
+@app.exception_handler(ResourceNotFoundError)
+async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": exc.message, "entity": exc.entity_name, "identifier": exc.identifier},
+    )
+
+
+@app.exception_handler(InvalidStateTransitionError)
+async def invalid_transition_handler(
+    request: Request, exc: InvalidStateTransitionError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "detail": exc.message,
+            "current_status": exc.current_status,
+            "target_status": exc.target_status,
+        },
+    )
+
+
+@app.exception_handler(DuplicateIdempotencyKeyError)
+async def duplicate_idempotency_handler(
+    request: Request, exc: DuplicateIdempotencyKeyError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": exc.message, "idempotency_key": exc.idempotency_key},
+    )
+
+
+@app.exception_handler(EstimationUnavailableError)
+async def estimation_unavailable_handler(
+    request: Request, exc: EstimationUnavailableError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": exc.message, "reason": exc.reason},
+    )
+
+
+@app.exception_handler(DomainError)
+async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
 
 # Root-level health check endpoint for AWS ALB targets
 app.add_api_route("/health", check_health, methods=["GET"], include_in_schema=False)
