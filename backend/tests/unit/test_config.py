@@ -28,11 +28,21 @@ def test_environment_validation() -> None:
         Settings(ENVIRONMENT="invalid_env_name")
 
 
-def test_production_secret_fail_closed() -> None:
+def test_production_secret_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies production and staging fail closed if AUTH_SECRET_KEY is default or too short."""
+    monkeypatch.delenv("AUTH_SECRET_KEY", raising=False)
+
     # Production with default dev key fails
     with pytest.raises(ValidationError) as exc:
         Settings(ENVIRONMENT="production")
+    assert "AUTH_SECRET_KEY" in str(exc.value)
+
+    # Explicit default dev key also fails
+    with pytest.raises(ValidationError) as exc:
+        Settings(
+            ENVIRONMENT="production",
+            AUTH_SECRET_KEY="dev-insecure-secret-key-replace-in-production-min-32-chars-long!",
+        )
     assert "AUTH_SECRET_KEY" in str(exc.value)
 
     # Staging with default dev key fails
