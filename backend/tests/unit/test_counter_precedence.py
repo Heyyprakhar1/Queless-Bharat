@@ -107,11 +107,11 @@ class TestCounterObservationPrecedence:
     async def test_unmanaged_service_uses_fresh_observation_counters(
         self, db_session, sample_service
     ):
-        """When 0 counters are registered in DB, fresh observation (<=30 mins) provides active count."""
+        """When 0 counters are registered in DB, fresh observation (<= 1800 seconds / 30 minutes) provides active count."""
         service = sample_service
         now = datetime.now(UTC)
 
-        # Fresh observation from 5 minutes ago
+        # Fresh observation from 5 minutes ago (300s <= 1800s)
         obs = WaitObservation(
             service_id=service.id,
             people_ahead=5,
@@ -130,7 +130,7 @@ class TestCounterObservationPrecedence:
     async def test_unmanaged_service_rejects_stale_observation_counters(
         self, db_session, sample_service
     ):
-        """When 0 counters are registered in DB, stale observation (>30 mins) is discarded."""
+        """When 0 counters are registered in DB, stale observation (> 1800 seconds / 30 minutes) is discarded."""
         service = sample_service
         now = datetime.now(UTC)
 

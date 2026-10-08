@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     AUTH_SECRET_KEY: str = "dev-insecure-secret-key-replace-in-production-min-32-chars-long!"
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    ENABLE_HSTS: bool = False
+
+    # Trusted Proxy & Rate Limiting
+    TRUST_PROXY_HEADERS: bool = False
+    TRUSTED_PROXIES: Annotated[list[str], BeforeValidator(_parse_origins)] = [
+        "127.0.0.1",
+        "::1",
+    ]
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_LOGIN_MAX: int = 100
     RATE_LIMIT_LOGIN_WINDOW: int = 60
@@ -57,6 +65,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_REGISTER_WINDOW: int = 60
     RATE_LIMIT_CHECKIN_MAX: int = 200
     RATE_LIMIT_CHECKIN_WINDOW: int = 60
+    RATE_LIMIT_POLL_SERVICE_MAX: int = 120
+    RATE_LIMIT_POLL_SERVICE_WINDOW: int = 60
+    RATE_LIMIT_POLL_SESSION_MAX: int = 60
+    RATE_LIMIT_POLL_SESSION_WINDOW: int = 60
+
+    # Request Bounds
+    MAX_REQUEST_BODY_BYTES: int = 1_048_576  # 1 MB default application-level limit
 
     # Database parameters
     POSTGRES_SERVER: str = "localhost"

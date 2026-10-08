@@ -85,7 +85,7 @@ class EstimationService:
             # Registered counters in DB are authoritative
             return active_counters_count, latest_observation
 
-        # Fallback to crowdsourced observation only when unmanaged AND fresh (<= 30 mins)
+        # Fallback to crowdsourced observation only when unmanaged AND fresh (<= 1800 seconds / 30 minutes)
         if (
             latest_observation
             and latest_observation.active_counters > 0

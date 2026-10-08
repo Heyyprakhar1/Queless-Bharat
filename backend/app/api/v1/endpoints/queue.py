@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_operator, get_current_user
-from app.core.rate_limit import rate_limit_queue_checkin
+from app.core.rate_limit import rate_limit_poll_session, rate_limit_queue_checkin
 from app.db.session import get_db
 from app.domain.enums import UserRole
 from app.domain.models import QueueSession, User
@@ -85,7 +85,11 @@ async def get_queue_session(
     return QueueSessionResponse.model_validate(queue_session)
 
 
-@router.get("/{session_id}/status", response_model=UserQueueStatusResponse)
+@router.get(
+    "/{session_id}/status",
+    response_model=UserQueueStatusResponse,
+    dependencies=[Depends(rate_limit_poll_session)],
+)
 async def get_user_queue_status(
     session_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

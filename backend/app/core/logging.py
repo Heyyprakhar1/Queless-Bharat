@@ -12,6 +12,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
 
+import re
+
 SENSITIVE_KEYS = {
     "password",
     "token",
@@ -24,15 +26,50 @@ SENSITIVE_KEYS = {
     "credentials",
 }
 
+_SENSITIVE_PATTERNS = [
+    # DB URI password: postgresql://user:password@host...
+    (
+        re.compile(r"(postgres(?:ql)?(?:\+[a-z0-9_]+)?://[^:]+:)([^@]+)(@)", re.IGNORECASE),
+        r"\1[REDACTED_DB_PASS]\3",
+    ),
+    # Bearer tokens and JWTs
+    (
+        re.compile(r"Bearer\s+ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*", re.IGNORECASE),
+        "Bearer [REDACTED_JWT]",
+    ),
+    (
+        re.compile(r"ey[A-Za-z0-9-_=]{10,}\.ey[A-Za-z0-9-_=]{10,}\.[A-Za-z0-9-_.+/=]*"),
+        "[REDACTED_JWT]",
+    ),
+    # Sensitive key-value pairs (password=xyz, secret=xyz, token=xyz)
+    (
+        re.compile(
+            r"""(?i)(["']?(?:password|secret|auth_secret|access_token|refresh_token|api_key)["']?\s*[:=]\s*["']?)[^"',\s}]+(["']?)"""
+        ),
+        r"\1[REDACTED]\2",
+    ),
+]
+
+
+def sanitize_sensitive_text(text: str) -> str:
+    """Sanitizes passwords, secrets, tokens, and database credentials from freeform error text."""
+    if not text:
+        return text
+    for pattern, replacement in _SENSITIVE_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
 
 def redact_sensitive_data(
     logger: logging.Logger, method_name: str, event_dict: dict[str, Any]
 ) -> dict[str, Any]:
-    """Redacts known sensitive keys and values from log event dictionaries."""
+    """Redacts known sensitive keys and sanitizes sensitive values from log event dictionaries."""
     for key, value in list(event_dict.items()):
         key_lower = key.lower()
         if any(s in key_lower for s in SENSITIVE_KEYS):
             event_dict[key] = "[REDACTED]"
+        elif isinstance(value, str):
+            event_dict[key] = sanitize_sensitive_text(value)
         elif isinstance(value, dict):
             event_dict[key] = redact_sensitive_data(logger, method_name, value)
     return event_dict

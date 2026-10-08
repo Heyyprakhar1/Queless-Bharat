@@ -87,7 +87,7 @@ M6.1.1 addresses architectural, concurrency, security, and reliability defects i
 ### 3. Counter & Observation Precedence
 - The registered `Counter` table status in PostgreSQL is the authoritative source of truth for active service capacity.
 - If registered counters exist and 0 counters are active, effective capacity is strictly 0 and the queue is correctly reported as halted. Stale or fabricated observations cannot resurrect counter capacity.
-- External or user-reported observations are only evaluated if 0 counters are registered in the database AND the observation timestamp is fresh ($\le 1800\text{s}$).
+- External or user-reported observations are only evaluated if 0 counters are registered in the database AND the observation timestamp is fresh ($\le 1800\text{s}$ / 30 minutes).
 
 ### 4. Production Secret Fail-Closed Enforcement
 - In `staging` and `production` environments, `AUTH_SECRET_KEY` must be configured with a cryptographically strong secret ($\ge 32$ characters) that does not contain default/insecure markers (`dev-`, `insecure`, `secret`, `replace-in-production`). Weak keys fail closed on application startup.
