@@ -6,7 +6,7 @@ import type {
   UserQueueStatusResponse,
 } from '../types/queue'
 import { getAuthHeaders } from './auth'
-import { API_BASE_URL, fetchWithTimeout } from './client'
+import { API_BASE_URL, ApiError, fetchWithTimeout } from './client'
 
 /**
  * Fetches distinct cities with registered facilities.
@@ -124,7 +124,11 @@ export async function fetchUserQueueStatus(sessionId: string): Promise<UserQueue
   )
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null)
-    throw new Error(errorBody?.detail || `Failed to fetch ticket status: HTTP ${response.status}`)
+    throw new ApiError(
+      response.status,
+      errorBody?.detail || `Failed to fetch ticket status: HTTP ${response.status}`,
+      errorBody?.detail
+    )
   }
   return response.json()
 }

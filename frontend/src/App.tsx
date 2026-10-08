@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type React from 'react'
 import {
+  citizenAccess,
   clearAuthSession,
   getAuthToken,
   getMe,
@@ -9,6 +10,7 @@ import {
   logout,
   register,
 } from './api/auth'
+import { ApiError } from './api/client'
 import { fetchHealth } from './api/health'
 import {
   cancelQueueSession,
@@ -22,6 +24,7 @@ import {
   startService,
 } from './api/queue'
 import {
+  AdminWorkspace,
   AuthModal,
   CitizenTokenDesk,
   Footer,
@@ -30,7 +33,7 @@ import {
   IndiaDemoExplorer,
   OperatorDesk,
 } from './components'
-import type { User, UserRole } from './types/auth'
+import type { User } from './types/auth'
 import type { HealthResponse } from './types/health'
 import type {
   Location,
@@ -45,28 +48,23 @@ export function App() {
   const [healthError, setHealthError] = useState<string | null>(null)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
 
-  // Auth state
+  // Auth & Identity State
   const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredUser())
+  const [currentWorkspace, setCurrentWorkspace] = useState<'citizen' | 'staff'>('citizen')
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authTab, setAuthTab] = useState<'citizen' | 'staff' | 'register'>('citizen')
   const [authEmail, setAuthEmail] = useState<string>('')
   const [authPassword, setAuthPassword] = useState<string>('')
   const [authFullName, setAuthFullName] = useState<string>('')
-  const [authRole, setAuthRole] = useState<UserRole>('CITIZEN')
   const [authLoading, setAuthLoading] = useState<boolean>(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  // M6.1 India Demo Explorer state
-  const [cities, setCities] = useState<string[]>([
-    'Pune',
-    'Mumbai',
-    'Bengaluru',
-    'Chennai',
-    'Kolkata',
-    'Delhi',
-    'Lucknow',
-    'Patna',
-  ])
+  // Citizen Input State (defaults to current user if logged in)
+  const [citizenName, setCitizenName] = useState<string>(() => getStoredUser()?.full_name || '')
+  const [citizenEmail, setCitizenEmail] = useState<string>(() => getStoredUser()?.email || '')
+
+  // M6.1.2 India Demo Explorer State (20 Urban Markets)
+  const [cities, setCities] = useState<string[]>([])
   const [selectedCity, setSelectedCity] = useState<string>('Pune')
   const [facilities, setFacilities] = useState<Location[]>([])
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>('')
@@ -76,16 +74,16 @@ export function App() {
   const [demoQueueLoading, setDemoQueueLoading] = useState<boolean>(false)
   const [demoQueueError, setDemoQueueError] = useState<string | null>(null)
 
-  // Citizen interactive flow state
+  // Citizen Interactive Flow State
   const [services, setServices] = useState<Service[]>([])
   const [selectedServiceId, setSelectedServiceId] = useState<string>('')
-  const [citizenName, setCitizenName] = useState<string>('')
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     return localStorage.getItem('queless_active_session_id') || ''
   })
   const [userStatus, setUserStatus] = useState<UserQueueStatusResponse | null>(null)
   const [citizenLoading, setCitizenLoading] = useState<boolean>(false)
   const [citizenError, setCitizenError] = useState<string | null>(null)
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null)
   const [operatorMessage, setOperatorMessage] = useState<string | null>(null)
   const [operatorIsError, setOperatorIsError] = useState<boolean>(false)
 
@@ -96,20 +94,27 @@ export function App() {
       getMe()
         .then((user) => {
           setCurrentUser(user)
+          if (user.full_name && !citizenName) setCitizenName(user.full_name)
+          if (user.email && !citizenEmail) setCitizenEmail(user.email)
+          if (user.role === 'OPERATOR' || user.role === 'ADMIN') {
+            setCurrentWorkspace('staff')
+          }
         })
         .catch(() => {
           clearAuthSession()
           setCurrentUser(null)
+          setCurrentWorkspace('citizen')
         })
     }
   }, [])
 
-  // Sync citizen name when user changes
+  // Sync citizen inputs when currentUser changes
   useEffect(() => {
-    if (currentUser?.full_name && !citizenName) {
-      setCitizenName(currentUser.full_name)
+    if (currentUser) {
+      if (currentUser.full_name) setCitizenName(currentUser.full_name)
+      if (currentUser.email) setCitizenEmail(currentUser.email)
     }
-  }, [currentUser, citizenName])
+  }, [currentUser])
 
   const checkHealth = async () => {
     setHealthLoading(true)
@@ -151,7 +156,7 @@ export function App() {
           )
         }
       } catch {
-        // Fallback default cities already pre-initialized
+        // Fallback default cities will be handled by components
       }
     }
     initCities()
@@ -219,7 +224,7 @@ export function App() {
     }
   }, [selectedFacilityId])
 
-  // Load queue status when selected demo service changes
+  // Load queue status for explorer
   const loadDemoQueueStatus = async (serviceId: string) => {
     if (!serviceId) return
     setDemoQueueLoading(true)
@@ -245,30 +250,84 @@ export function App() {
     }
   }, [selectedDemoServiceId])
 
-  // User Ticket Status Poll
+  // Single-shot load ticket status with 404 recovery
   const loadUserStatus = async (sessionId: string) => {
     if (!sessionId) return
     try {
       const status = await fetchUserQueueStatus(sessionId)
       setUserStatus(status)
       setCitizenError(null)
-    } catch (err) {
-      setCitizenError(err instanceof Error ? err.message : 'Failed to fetch ticket status')
+      setSessionNotice(null)
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 404) {
+        localStorage.removeItem('queless_active_session_id')
+        setActiveSessionId('')
+        setUserStatus(null)
+        setSessionNotice(
+          'Your previous queue session is no longer active. You can issue a new digital token.'
+        )
+        setCitizenError(null)
+      } else {
+        setCitizenError(err instanceof Error ? err.message : 'Failed to fetch ticket status')
+      }
     }
   }
 
+  // Active Ticket Status Polling with 404 recovery & terminal status detection
   useEffect(() => {
-    if (activeSessionId) {
-      loadUserStatus(activeSessionId)
-      const ticketInterval = setInterval(() => {
-        loadUserStatus(activeSessionId)
-      }, 5000)
-      return () => clearInterval(ticketInterval)
+    if (!activeSessionId) return
+    let isCancelled = false
+    let timerId: ReturnType<typeof setInterval> | null = null
+
+    const pollTicket = async () => {
+      try {
+        const status = await fetchUserQueueStatus(activeSessionId)
+        if (!isCancelled) {
+          setUserStatus(status)
+          setCitizenError(null)
+          // Stop polling if ticket reached terminal status
+          if (status.session.status === 'COMPLETED' || status.session.status === 'CANCELLED') {
+            if (timerId) {
+              clearInterval(timerId)
+              timerId = null
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          if (err instanceof ApiError && err.status === 404) {
+            // Immediate stale session recovery: stop polling, clear storage, reset state
+            localStorage.removeItem('queless_active_session_id')
+            setActiveSessionId('')
+            setUserStatus(null)
+            setSessionNotice(
+              'Your previous queue session is no longer active. You can issue a new digital token.'
+            )
+            setCitizenError(null)
+            if (timerId) {
+              clearInterval(timerId)
+              timerId = null
+            }
+          } else {
+            setCitizenError(err instanceof Error ? err.message : 'Failed to fetch ticket status')
+          }
+        }
+      }
+    }
+
+    pollTicket()
+    timerId = setInterval(pollTicket, 5000)
+
+    return () => {
+      isCancelled = true
+      if (timerId) clearInterval(timerId)
     }
   }, [activeSessionId])
 
-  // Auth handlers
-  const handleLoginSubmit = async (e?: React.FormEvent) => {
+  // --- Auth Handlers ---
+
+  // Staff Portal Login (Work email + password)
+  const handleStaffLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setAuthLoading(true)
     setAuthError(null)
@@ -277,6 +336,9 @@ export function App() {
       setCurrentUser(resp.user)
       setShowAuthModal(false)
       setAuthPassword('')
+      if (resp.user.role === 'OPERATOR' || resp.user.role === 'ADMIN') {
+        setCurrentWorkspace('staff')
+      }
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -284,6 +346,31 @@ export function App() {
     }
   }
 
+  // Low-Friction Citizen Access (Full name + email, no password)
+  const handleCitizenAccessSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const nameToUse = citizenName.trim() || 'Citizen Participant'
+    const emailToUse = citizenEmail.trim()
+    if (!emailToUse) {
+      setAuthError('Email address is required for citizen access.')
+      return
+    }
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      const resp = await citizenAccess(nameToUse, emailToUse)
+      setCurrentUser(resp.user)
+      setShowAuthModal(false)
+      setCitizenName(resp.user.full_name || nameToUse)
+      setCitizenEmail(resp.user.email)
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Citizen access failed')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  // Traditional Registration
   const handleRegisterSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setAuthLoading(true)
@@ -293,27 +380,15 @@ export function App() {
         email: authEmail,
         password: authPassword,
         full_name: authFullName,
-        role: authRole,
+        role: 'CITIZEN',
       })
       setCurrentUser(resp.user)
       setShowAuthModal(false)
       setAuthPassword('')
+      setCitizenName(resp.user.full_name || authFullName)
+      setCitizenEmail(resp.user.email)
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Registration failed')
-    } finally {
-      setAuthLoading(false)
-    }
-  }
-
-  const handleQuickLogin = async (email: string, pass: string) => {
-    setAuthLoading(true)
-    setAuthError(null)
-    try {
-      const resp = await login({ email, password: pass })
-      setCurrentUser(resp.user)
-      setShowAuthModal(false)
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setAuthLoading(false)
     }
@@ -322,18 +397,32 @@ export function App() {
   const handleLogout = async () => {
     await logout()
     setCurrentUser(null)
+    setCurrentWorkspace('citizen')
     setCitizenError(null)
     setOperatorMessage(null)
   }
 
-  // Handle Join Queue
+  // --- Queue Ticket Actions ---
+
   const handleJoinQueue = async () => {
     const targetServiceId = selectedServiceId || selectedDemoServiceId
     if (!targetServiceId) return
     setCitizenLoading(true)
     setCitizenError(null)
     setOperatorMessage(null)
+    setSessionNotice(null)
+
     try {
+      // Ensure citizen session exists (low-friction auto-identification if not already authenticated)
+      if (!getAuthToken()) {
+        const nameToUse = citizenName.trim() || 'Citizen Participant'
+        const emailToUse = citizenEmail.trim() || `citizen.${Date.now()}@queless.gov.in`
+        const authResp = await citizenAccess(nameToUse, emailToUse)
+        setCurrentUser(authResp.user)
+        setCitizenName(authResp.user.full_name || nameToUse)
+        setCitizenEmail(authResp.user.email)
+      }
+
       const idempotencyKey = `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const session = await checkInQueue(
         targetServiceId,
@@ -353,7 +442,6 @@ export function App() {
     }
   }
 
-  // Handle Cancel Ticket
   const handleCancelTicket = async () => {
     if (!activeSessionId) return
     setCitizenLoading(true)
@@ -370,15 +458,16 @@ export function App() {
     }
   }
 
-  // Dismiss finished ticket
   const handleDismissTicket = () => {
     setActiveSessionId('')
     setUserStatus(null)
     localStorage.removeItem('queless_active_session_id')
     setOperatorMessage(null)
+    setSessionNotice(null)
   }
 
-  // Operator actions
+  // --- Operator Actions ---
+
   const handleOperatorStart = async () => {
     if (!activeSessionId) return
     setCitizenLoading(true)
@@ -429,123 +518,197 @@ export function App() {
       <Header
         isHealthy={isHealthy}
         currentUser={currentUser}
+        currentWorkspace={currentWorkspace}
+        onSelectWorkspace={setCurrentWorkspace}
         onLogout={handleLogout}
-        onOpenAuth={() => {
-          setAuthMode('login')
+        onOpenCitizenAccess={() => {
+          setAuthTab('citizen')
+          setAuthError(null)
           setShowAuthModal(true)
         }}
-        onQuickLogin={handleQuickLogin}
+        onOpenStaffPortal={() => {
+          setAuthTab('staff')
+          setAuthError(null)
+          setShowAuthModal(true)
+        }}
       />
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
-        {/* Hero Section */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-            Predictable Waiting for Public Services Across India
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto">
-            <em>&ldquo;Making waiting more predictable, not pretending queues don&apos;t exist.&rdquo;</em>
-          </p>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+        {/* If Staff Workspace is active and User is Admin */}
+        {currentWorkspace === 'staff' && currentUser?.role === 'ADMIN' ? (
+          <AdminWorkspace
+            currentUser={currentUser}
+            cities={cities}
+            facilities={facilities}
+            selectedCity={selectedCity}
+            onSelectCity={setSelectedCity}
+            onRefreshData={() => {
+              checkHealth()
+              loadGlobalCatalog()
+            }}
+          />
+        ) : currentWorkspace === 'staff' && currentUser?.role === 'OPERATOR' ? (
+          /* Standalone Operator Workspace Shell */
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-xl font-black text-slate-900">
+                    Desk Operator Workspace
+                  </h2>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                    OPERATOR ACTIVE
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Counter intake, citizen queue advancement, and empirical throughput recording.
+                </p>
+              </div>
 
-          {/* Simulation Disclaimer Alert Banner */}
-          <div
-            id="simulation-notice-banner"
-            className="mt-4 p-3.5 max-w-3xl mx-auto rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-center space-x-2 text-center"
-          >
-            <span className="font-extrabold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] tracking-wider uppercase">
-              SIMULATED DEMO DATA
-            </span>
-            <span>
-              All queue sizes, active counters, and throughput sessions shown are <strong>DEMO / SIMULATED DATA</strong> for mathematical algorithmic evaluation. Not live facility telemetry.
-            </span>
+              <div className="text-xs text-slate-600">
+                Staff Account: <strong>{currentUser.full_name || currentUser.email}</strong>
+              </div>
+            </div>
+
+            {userStatus ? (
+              <OperatorDesk
+                currentUser={currentUser}
+                userStatus={userStatus}
+                citizenLoading={citizenLoading}
+                operatorMessage={operatorMessage}
+                operatorIsError={operatorIsError}
+                onStartService={handleOperatorStart}
+                onCompleteService={handleOperatorComplete}
+                onRefreshStatus={() => loadUserStatus(activeSessionId)}
+              />
+            ) : (
+              <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 space-y-2">
+                <p>No active participant currently seated at this desk.</p>
+                <p className="text-xs text-slate-400">
+                  Switch to the Citizen Portal tab to issue a test token or observe queue intake.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          /* CITIZEN PORTAL (Default view for Public Citizens and Demo Observers) */
+          <>
+            {/* Hero Section */}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                Predictable Waiting for Public Services Across India
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto">
+                <em>&ldquo;Making waiting more predictable, not pretending queues don&apos;t exist.&rdquo;</em>
+              </p>
 
-        {/* SECTION 1: M6.1 INDIA CIVIC QUEUE EXPLORER (CITY -> FACILITY -> SERVICE -> ESTIMATE) */}
-        <IndiaDemoExplorer
-          cities={cities}
-          selectedCity={selectedCity}
-          onSelectCity={setSelectedCity}
-          facilities={facilities}
-          selectedFacilityId={selectedFacilityId}
-          onSelectFacility={setSelectedFacilityId}
-          facilityServices={facilityServices}
-          selectedDemoServiceId={selectedDemoServiceId}
-          onSelectDemoService={setSelectedDemoServiceId}
-          demoQueueStatus={demoQueueStatus}
-          demoQueueLoading={demoQueueLoading}
-          demoQueueError={demoQueueError}
-          onTestServiceInTokenDesk={(serviceId) => {
-            setSelectedServiceId(serviceId)
-            window.scrollTo({ top: 800, behavior: 'smooth' })
-          }}
-        />
+              {/* Simulation Disclaimer Alert Banner */}
+              <div
+                id="simulation-notice-banner"
+                className="mt-4 p-3.5 max-w-3xl mx-auto rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-center space-x-2 text-center"
+              >
+                <span className="font-extrabold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] tracking-wider uppercase">
+                  SIMULATED DEMO DATA
+                </span>
+                <span>
+                  All queue sizes, active counters, and throughput sessions shown are <strong>DEMO / SIMULATED DATA</strong> for mathematical algorithmic evaluation. Not live facility telemetry.
+                </span>
+              </div>
+            </div>
 
-        {/* SECTION 2: CITIZEN DIGITAL TOKEN DESK (LIFECYCLE & OPERATOR CONTROLS) */}
-        <CitizenTokenDesk
-          currentUser={currentUser}
-          services={services}
-          selectedServiceId={selectedServiceId}
-          onSelectService={setSelectedServiceId}
-          citizenName={citizenName}
-          onChangeCitizenName={setCitizenName}
-          activeSessionId={activeSessionId}
-          userStatus={userStatus}
-          citizenLoading={citizenLoading}
-          citizenError={citizenError}
-          selectedDemoServiceId={selectedDemoServiceId}
-          onJoinQueue={handleJoinQueue}
-          onCancelTicket={handleCancelTicket}
-          onDismissTicket={handleDismissTicket}
-          onQuickLogin={handleQuickLogin}
-        >
-          {activeSessionId && userStatus && (
-            <OperatorDesk
+            {/* SECTION 1: M6.1.2 INDIA CIVIC QUEUE EXPLORER (20 CITIES & 12 CATEGORIES) */}
+            <IndiaDemoExplorer
+              cities={cities}
+              selectedCity={selectedCity}
+              onSelectCity={setSelectedCity}
+              facilities={facilities}
+              selectedFacilityId={selectedFacilityId}
+              onSelectFacility={setSelectedFacilityId}
+              facilityServices={facilityServices}
+              selectedDemoServiceId={selectedDemoServiceId}
+              onSelectDemoService={setSelectedDemoServiceId}
+              demoQueueStatus={demoQueueStatus}
+              demoQueueLoading={demoQueueLoading}
+              demoQueueError={demoQueueError}
+              onTestServiceInTokenDesk={(serviceId) => {
+                setSelectedServiceId(serviceId)
+                window.scrollTo({ top: 850, behavior: 'smooth' })
+              }}
+            />
+
+            {/* SECTION 2: CITIZEN DIGITAL TOKEN DESK (LIFECYCLE, 404 RECOVERY & OPERATOR ACTIONS) */}
+            <CitizenTokenDesk
               currentUser={currentUser}
+              services={services}
+              selectedServiceId={selectedServiceId}
+              onSelectService={setSelectedServiceId}
+              citizenName={citizenName}
+              onChangeCitizenName={setCitizenName}
+              citizenEmail={citizenEmail}
+              onChangeCitizenEmail={setCitizenEmail}
+              activeSessionId={activeSessionId}
               userStatus={userStatus}
               citizenLoading={citizenLoading}
-              operatorMessage={operatorMessage}
-              operatorIsError={operatorIsError}
-              onStartService={handleOperatorStart}
-              onCompleteService={handleOperatorComplete}
-              onRefreshStatus={() => loadUserStatus(activeSessionId)}
-            />
-          )}
-        </CitizenTokenDesk>
+              citizenError={citizenError}
+              sessionNotice={sessionNotice}
+              onClearSessionNotice={() => setSessionNotice(null)}
+              selectedDemoServiceId={selectedDemoServiceId}
+              onJoinQueue={handleJoinQueue}
+              onCancelTicket={handleCancelTicket}
+              onDismissTicket={handleDismissTicket}
+              onRefreshTicket={() => loadUserStatus(activeSessionId)}
+            >
+              {activeSessionId && userStatus && (
+                <OperatorDesk
+                  currentUser={currentUser}
+                  userStatus={userStatus}
+                  citizenLoading={citizenLoading}
+                  operatorMessage={operatorMessage}
+                  operatorIsError={operatorIsError}
+                  onStartService={handleOperatorStart}
+                  onCompleteService={handleOperatorComplete}
+                  onRefreshStatus={() => loadUserStatus(activeSessionId)}
+                />
+              )}
+            </CitizenTokenDesk>
 
-        {/* SECTION 3: BACKEND HEALTH & READINESS PANEL */}
-        <HealthPanel
-          health={health}
-          healthLoading={healthLoading}
-          healthError={healthError}
-          lastChecked={lastChecked}
-          onCheckHealth={checkHealth}
-        />
+            {/* SECTION 3: BACKEND HEALTH & READINESS PANEL */}
+            <HealthPanel
+              health={health}
+              healthLoading={healthLoading}
+              healthError={healthError}
+              lastChecked={lastChecked}
+              onCheckHealth={checkHealth}
+            />
+          </>
+        )}
       </main>
 
       {/* AUTH MODAL */}
       <AuthModal
         isOpen={showAuthModal}
-        mode={authMode}
+        activeTab={authTab}
         onClose={() => setShowAuthModal(false)}
-        onModeChange={(mode) => {
-          setAuthMode(mode)
+        onTabChange={(tab) => {
+          setAuthTab(tab)
           setAuthError(null)
         }}
+        citizenName={citizenName}
+        setCitizenName={setCitizenName}
+        citizenEmail={citizenEmail}
+        setCitizenEmail={setCitizenEmail}
+        onSubmitCitizenAccess={handleCitizenAccessSubmit}
         authEmail={authEmail}
         setAuthEmail={setAuthEmail}
         authPassword={authPassword}
         setAuthPassword={setAuthPassword}
+        onSubmitStaffLogin={handleStaffLoginSubmit}
         authFullName={authFullName}
         setAuthFullName={setAuthFullName}
-        authRole={authRole}
-        setAuthRole={setAuthRole}
+        onSubmitRegister={handleRegisterSubmit}
         authLoading={authLoading}
         authError={authError}
-        onSubmitLogin={handleLoginSubmit}
-        onSubmitRegister={handleRegisterSubmit}
-        onQuickLogin={handleQuickLogin}
       />
 
       {/* Footer */}

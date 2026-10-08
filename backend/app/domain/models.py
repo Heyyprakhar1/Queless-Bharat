@@ -43,8 +43,7 @@ class Location(Base):
     __tablename__ = "locations"
     __table_args__ = (
         CheckConstraint(
-            f"category IN ('{LocationCategory.HOSPITAL}', '{LocationCategory.RTO}', "
-            f"'{LocationCategory.GOVERNMENT_OFFICE}')",
+            f"category IN ({', '.join(repr(c.value) for c in LocationCategory)})",
             name="chk_locations_category",
         ),
         CheckConstraint(

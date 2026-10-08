@@ -73,6 +73,20 @@ async function setupIsolatedService(request: any, name: string) {
   return { serviceId: svc.id, serviceName: svc.name, counterId: cnt.id, opEmail, opPass }
 }
 
+// Low-friction citizen onboarding helper
+async function loginAsCitizenHelper(
+  page: any,
+  name = 'Citizen Amit Sharma',
+  email = 'citizen@queless.gov.in'
+) {
+  await page.click('#btn-open-citizen-access')
+  await page.fill('#input-citizen-name', name)
+  await page.fill('#input-citizen-email', email)
+  await page.click('#btn-submit-citizen-access')
+  await expect(page.locator('#auth-user-badge')).toContainText(name)
+  await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
+}
+
 test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
@@ -86,7 +100,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     await page.goto('/')
     await expect(page.locator('#btn-open-auth')).toBeVisible()
 
-    // Open login modal
+    // Open staff login modal
     await page.click('#btn-open-auth')
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'CitizenPass123!')
@@ -98,6 +112,26 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     await expect(page.locator('#btn-logout')).toBeVisible()
 
     // Verify localStorage has access token
+    const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
+    expect(token).toBeTruthy()
+  })
+
+  test('Scenario 1b: Low-friction Citizen Access provides unprivileged token without password', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+
+    // Open citizen access modal
+    await page.click('#btn-open-citizen-access')
+    await page.fill('#input-citizen-name', 'Rohan Mehra')
+    await page.fill('#input-citizen-email', 'rohan.mehra@example.com')
+    await page.click('#btn-submit-citizen-access')
+
+    // Verify citizen identity and role
+    await expect(page.locator('#auth-user-badge')).toContainText('Rohan Mehra')
+    await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
+
     const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
     expect(token).toBeTruthy()
   })
@@ -129,9 +163,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     const { serviceId } = await setupIsolatedService(request, 'Citizen OPD Consultation')
 
     await page.goto('/')
-    // Quick login as citizen and wait for auth state
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizenHelper(page)
 
     // Select service and join queue
     await page.selectOption('#facility-service', { value: serviceId })
@@ -158,8 +190,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     const { serviceId } = await setupIsolatedService(request, 'Citizen RBAC Guard')
 
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizenHelper(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.click('#btn-join-queue')
@@ -175,12 +206,12 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     await page.click('#btn-operator-start')
     const startResp = await startPromise
     const errBody = await startResp.json()
-    expect(errBody.detail).toContain("lacks permission for this action")
+    expect(errBody.detail).toContain('lacks permission for this action')
 
     // UI displays browser-visible rejection error
     await expect(page.locator('#operator-message')).toBeVisible()
     await expect(page.locator('#operator-message')).toContainText(
-      "lacks permission for this action"
+      'lacks permission for this action'
     )
 
     // Ticket status remains WAITING
@@ -198,8 +229,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
 
     // Step 1: Citizen creates a ticket
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizenHelper(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.click('#btn-join-queue')
@@ -221,6 +251,12 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
 
     await expect(page.locator('#auth-user-badge')).toContainText('Desk Operator Rajesh')
     await expect(page.locator('#auth-role-badge')).toHaveText('OPERATOR')
+
+    // If in operator workspace, switch to citizen portal to operate on active ticket or use operator desk
+    if (await page.locator('#tab-view-citizen').isVisible()) {
+      await page.click('#tab-view-citizen')
+    }
+
     await expect(page.locator('#operator-role-indicator')).toContainText('Authorized (OPERATOR)')
 
     // Step 3: Operator starts service (200 OK)
@@ -251,8 +287,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
 
     // Citizen A joins queue and gets sessionId
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizenHelper(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.click('#btn-join-queue')
@@ -302,7 +337,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     page,
   }) => {
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
+    await loginAsCitizenHelper(page)
     await expect(page.locator('#auth-user-badge')).toBeVisible()
 
     // Click logout
@@ -324,7 +359,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     page,
   }) => {
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
+    await loginAsCitizenHelper(page)
     await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
     await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
 
@@ -373,8 +408,7 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
 
     // 1. Citizen joins
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizenHelper(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.click('#btn-join-queue')
@@ -390,6 +424,11 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     await page.click('#btn-submit-login')
 
     await expect(page.locator('#auth-user-badge')).toContainText('Desk Operator Rajesh')
+
+    if (await page.locator('#tab-view-citizen').isVisible()) {
+      await page.click('#tab-view-citizen')
+    }
+
     await expect(page.locator('#operator-role-indicator')).toContainText('Authorized (OPERATOR)')
 
     // 3. Operator starts service
@@ -403,5 +442,37 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     // 5. Citizen takes new token (dismiss ticket)
     await page.click('button:has-text("Take New Token")')
     await expect(page.locator('#btn-join-queue')).toBeVisible()
+  })
+
+  test('Scenario 11: Stale session (404) auto-recovers cleanly and allows issuing a new token', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await loginAsCitizenHelper(page)
+
+    // Inject a non-existent / stale session ID into localStorage
+    const staleUUID = '00000000-0000-0000-0000-000000000000'
+    await page.evaluate((sid) => {
+      localStorage.setItem('queless_active_session_id', sid)
+    }, staleUUID)
+
+    // Reload page
+    await page.reload()
+
+    // Expect the recoverable notice banner to appear
+    await expect(page.locator('#stale-session-notice')).toBeVisible()
+    await expect(page.locator('#stale-session-notice')).toContainText(
+      'Your previous queue session is no longer active'
+    )
+
+    // Token desk must be in clean 'Issue Digital Token' state
+    await expect(page.locator('#btn-join-queue')).toBeVisible()
+    await expect(page.locator('#btn-join-queue')).toBeEnabled()
+
+    // Stale session ID must have been cleared from localStorage
+    const storedSession = await page.evaluate(() =>
+      localStorage.getItem('queless_active_session_id')
+    )
+    expect(storedSession).toBeNull()
   })
 })

@@ -1,98 +1,184 @@
 import type React from 'react'
-import type { UserRole } from '../types/auth'
 
 interface AuthModalProps {
   isOpen: boolean
-  mode: 'login' | 'register'
+  activeTab: 'citizen' | 'staff' | 'register'
   onClose: () => void
-  onModeChange: (mode: 'login' | 'register') => void
+  onTabChange: (tab: 'citizen' | 'staff' | 'register') => void
+  // Low-friction Citizen Access
+  citizenName: string
+  setCitizenName: (name: string) => void
+  citizenEmail: string
+  setCitizenEmail: (email: string) => void
+  onSubmitCitizenAccess: (e: React.FormEvent) => void
+  // Staff Portal Login
   authEmail: string
   setAuthEmail: (email: string) => void
   authPassword: string
   setAuthPassword: (pwd: string) => void
+  onSubmitStaffLogin: (e: React.FormEvent) => void
+  // Traditional Citizen Register
   authFullName: string
   setAuthFullName: (name: string) => void
-  authRole: UserRole
-  setAuthRole: (role: UserRole) => void
+  onSubmitRegister: (e: React.FormEvent) => void
+  // Common states
   authLoading: boolean
   authError: string | null
-  onSubmitLogin: (e: React.FormEvent) => void
-  onSubmitRegister: (e: React.FormEvent) => void
-  onQuickLogin: (email: string, pass: string) => void
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
-  mode,
+  activeTab,
   onClose,
-  onModeChange,
+  onTabChange,
+  citizenName,
+  setCitizenName,
+  citizenEmail,
+  setCitizenEmail,
+  onSubmitCitizenAccess,
   authEmail,
   setAuthEmail,
   authPassword,
   setAuthPassword,
+  onSubmitStaffLogin,
   authFullName,
   setAuthFullName,
-  authRole,
-  setAuthRole,
+  onSubmitRegister,
   authLoading,
   authError,
-  onSubmitLogin,
-  onSubmitRegister,
-  onQuickLogin,
 }) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 space-y-5">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-5">
+        {/* Header Tabs */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex space-x-3">
+          <div className="flex space-x-2 sm:space-x-4">
             <button
-              id="tab-login"
+              id="tab-citizen"
               type="button"
-              onClick={() => onModeChange('login')}
-              className={`text-sm font-bold pb-1 cursor-pointer transition ${
-                mode === 'login'
+              onClick={() => onTabChange('citizen')}
+              className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
+                activeTab === 'citizen'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              Sign In
+              Citizen Access
+            </button>
+            <button
+              id="tab-login"
+              type="button"
+              onClick={() => onTabChange('staff')}
+              className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
+                activeTab === 'staff'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Staff Portal
             </button>
             <button
               id="tab-register"
               type="button"
-              onClick={() => onModeChange('register')}
-              className={`text-sm font-bold pb-1 cursor-pointer transition ${
-                mode === 'register'
+              onClick={() => onTabChange('register')}
+              className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
+                activeTab === 'register'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              Create Account
+              Register
             </button>
           </div>
           <button
             id="btn-close-modal"
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer"
           >
             &times;
           </button>
         </div>
 
+        {/* Error notification */}
         {authError && (
-          <div id="auth-error-msg" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-            <strong>Authentication error:</strong> {authError}
+          <div
+            id="auth-error-msg"
+            className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs"
+          >
+            <strong>Authentication Error:</strong> {authError}
           </div>
         )}
 
-        {mode === 'login' ? (
-          <form onSubmit={onSubmitLogin} className="space-y-4">
+        {/* TAB 1: LOW-FRICTION CITIZEN ACCESS */}
+        {activeTab === 'citizen' && (
+          <form onSubmit={onSubmitCitizenAccess} className="space-y-4">
+            <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs text-indigo-900">
+              <span className="font-bold">Instant Citizen Entry:</span> No password required. Enter your full name and email to issue and manage digital queue tokens.
+            </div>
+
             <div>
-              <label htmlFor="input-login-email" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="input-citizen-name"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Full Name
+              </label>
+              <input
+                id="input-citizen-name"
+                type="text"
+                required
+                value={citizenName}
+                onChange={(e) => setCitizenName(e.target.value)}
+                placeholder="e.g. Ramesh Patel"
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="input-citizen-email"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Email Address
+              </label>
+              <input
+                id="input-citizen-email"
+                type="email"
+                required
+                value={citizenEmail}
+                onChange={(e) => setCitizenEmail(e.target.value)}
+                placeholder="ramesh.patel@example.com"
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <button
+              id="btn-submit-citizen-access"
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+            >
+              {authLoading ? 'Signing in...' : 'Continue as Citizen'}
+            </button>
+          </form>
+        )}
+
+        {/* TAB 2: STAFF PORTAL (EMAIL + PASSWORD, BACKEND ROLE DERIVATION) */}
+        {activeTab === 'staff' && (
+          <form onSubmit={onSubmitStaffLogin} className="space-y-4">
+            <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
+              <span className="font-bold">Staff Access:</span> For counter operators and system administrators. Enter assigned work credentials. Roles are verified securely by the backend.
+            </div>
+
+            <div>
+              <label
+                htmlFor="input-login-email"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Staff Work Email
               </label>
               <input
                 id="input-login-email"
@@ -100,13 +186,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 required
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="name@example.com"
+                placeholder="operator@queless.gov.in"
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
-              <label htmlFor="input-login-password" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="input-login-password"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Password
               </label>
               <input
@@ -126,46 +215,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               disabled={authLoading}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
-              {authLoading ? 'Signing in...' : 'Sign In'}
+              {authLoading ? 'Signing in...' : 'Sign In to Staff Portal'}
             </button>
-
-            <div className="pt-2 border-t border-slate-100 text-center">
-              <span className="text-[11px] text-slate-400 block mb-2">Or select a demo account:</span>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  id="btn-modal-demo-citizen"
-                  type="button"
-                  onClick={() => onQuickLogin('citizen@queless.gov.in', 'CitizenPass123!')}
-                  className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
-                >
-                  <span>Citizen (Amit Sharma)</span>
-                  <span className="text-[10px] text-slate-400 font-mono">citizen@queless.gov.in</span>
-                </button>
-                <button
-                  id="btn-modal-demo-operator"
-                  type="button"
-                  onClick={() => onQuickLogin('operator@queless.gov.in', 'OperatorPass123!')}
-                  className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
-                >
-                  <span>Operator (Rajesh)</span>
-                  <span className="text-[10px] text-slate-400 font-mono">operator@queless.gov.in</span>
-                </button>
-                <button
-                  id="btn-modal-demo-admin"
-                  type="button"
-                  onClick={() => onQuickLogin('admin@queless.gov.in', 'AdminPass123!')}
-                  className="w-full py-1.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition cursor-pointer text-left flex justify-between items-center"
-                >
-                  <span>System Admin</span>
-                  <span className="text-[10px] text-slate-400 font-mono">admin@queless.gov.in</span>
-                </button>
-              </div>
-            </div>
           </form>
-        ) : (
+        )}
+
+        {/* TAB 3: TRADITIONAL CITIZEN REGISTRATION */}
+        {activeTab === 'register' && (
           <form onSubmit={onSubmitRegister} className="space-y-4">
             <div>
-              <label htmlFor="input-register-name" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="input-register-name"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Full Name
               </label>
               <input
@@ -180,7 +242,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="input-register-email" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="input-register-email"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Email Address
               </label>
               <input
@@ -195,7 +260,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="input-register-password" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="input-register-password"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Password (min 8 chars)
               </label>
               <input
@@ -208,24 +276,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="••••••••"
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-            </div>
-
-            <div>
-              <label htmlFor="select-register-role" className="block text-xs font-semibold text-slate-700 mb-1">
-                Account Role
-              </label>
-              <select
-                id="select-register-role"
-                value={authRole}
-                disabled
-                onChange={(e) => setAuthRole(e.target.value as UserRole)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-100 text-slate-600 cursor-not-allowed"
-              >
-                <option value="CITIZEN">CITIZEN (Public queue participant)</option>
-              </select>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Public registration securely provisions CITIZEN role. Privileged operator and administrative roles are provisioned through admin management.
-              </p>
             </div>
 
             <button

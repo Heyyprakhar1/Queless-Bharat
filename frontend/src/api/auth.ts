@@ -76,6 +76,29 @@ export async function register(data: RegisterData): Promise<TokenResponse> {
   return login({ email: data.email, password: data.password })
 }
 
+export async function citizenAccess(fullName: string, email: string): Promise<TokenResponse> {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/citizen-access`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      full_name: fullName,
+      email: email,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Citizen access failed: HTTP ${response.status}`)
+  }
+
+  const data: TokenResponse = await response.json()
+  setAuthSession(data.access_token, data.user)
+  return data
+}
+
 export async function getMe(): Promise<User> {
   const token = getAuthToken()
   if (!token) {

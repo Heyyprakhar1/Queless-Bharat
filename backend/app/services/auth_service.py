@@ -95,6 +95,39 @@ class AuthService:
         )
         return user, token
 
+    async def get_or_create_citizen(self, full_name: str, email: str) -> tuple[User, str]:
+        """Low-friction onboarding for citizens (demo/transitional).
+
+        Strictly grants CITIZEN role. Never elevates or grants operator/admin access.
+        Staff accounts must sign in via the Staff Portal.
+        """
+        stmt = select(User).where(User.email == email.lower())
+        user = (await self.session.execute(stmt)).scalar_one_or_none()
+        if user:
+            if user.role != UserRole.CITIZEN:
+                raise DomainError("Staff accounts must sign in via the Staff Portal.")
+            if not user.is_active:
+                raise DomainError("Account is inactive")
+        else:
+            user = User(
+                email=email.lower(),
+                full_name=full_name.strip(),
+                hashed_password=get_password_hash(uuid.uuid4().hex),
+                role=UserRole.CITIZEN,
+                is_active=True,
+                assigned_service_id=None,
+            )
+            self.session.add(user)
+            await self.session.commit()
+            await self.session.refresh(user)
+
+        token = create_access_token(
+            subject=str(user.id),
+            role=user.role,
+            extra_claims={"email": user.email, "name": user.full_name},
+        )
+        return user, token
+
     async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         """Retrieves user entity by identifier."""
         stmt = select(User).where(User.id == user_id)

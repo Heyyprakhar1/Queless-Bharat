@@ -12,6 +12,7 @@ from app.domain.exceptions import DomainError
 from app.domain.models import User
 from app.schemas.auth import (
     AdminCreateUserRequest,
+    CitizenAccessRequest,
     CitizenRegisterRequest,
     TokenResponse,
     UserLoginRequest,
@@ -20,6 +21,38 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post(
+    "/citizen-access",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit_auth_login)],
+)
+async def citizen_access(
+    data: CitizenAccessRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TokenResponse:
+    """Low-friction citizen profile and session access for civic queues.
+
+    Provisions or recovers a strictly unprivileged CITIZEN identity.
+    Staff accounts are directed to sign in via the Staff Portal.
+    """
+    auth_svc = AuthService(db)
+    try:
+        user, token = await auth_svc.get_or_create_citizen(data.full_name, data.email)
+    except DomainError as exc:
+        is_staff_error = "Staff accounts" in str(exc)
+        err_status = status.HTTP_403_FORBIDDEN if is_staff_error else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=err_status,
+            detail=str(exc),
+        ) from exc
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+    )
 
 
 @router.post(

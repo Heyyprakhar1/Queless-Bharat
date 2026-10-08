@@ -9,15 +9,19 @@ interface CitizenTokenDeskProps {
   onSelectService: (serviceId: string) => void
   citizenName: string
   onChangeCitizenName: (name: string) => void
+  citizenEmail: string
+  onChangeCitizenEmail: (email: string) => void
   activeSessionId: string
   userStatus: UserQueueStatusResponse | null
   citizenLoading: boolean
   citizenError: string | null
+  sessionNotice: string | null
+  onClearSessionNotice: () => void
   selectedDemoServiceId: string
   onJoinQueue: () => void
   onCancelTicket: () => void
   onDismissTicket: () => void
-  onQuickLogin: (email: string, pass: string) => void
+  onRefreshTicket: () => void
   children?: React.ReactNode
 }
 
@@ -28,60 +32,98 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
   onSelectService,
   citizenName,
   onChangeCitizenName,
+  citizenEmail,
+  onChangeCitizenEmail,
   activeSessionId,
   userStatus,
   citizenLoading,
   citizenError,
+  sessionNotice,
+  onClearSessionNotice,
   selectedDemoServiceId,
   onJoinQueue,
   onCancelTicket,
   onDismissTicket,
-  onQuickLogin,
+  onRefreshTicket,
   children,
 }) => {
   const isTerminalTicket =
     userStatus?.session.status === 'COMPLETED' || userStatus?.session.status === 'CANCELLED'
 
+  // Format token cleanly: prefer queue position or short ticket code
+  const tokenDisplay = userStatus?.position
+    ? `#Q-${String(userStatus.position).padStart(3, '0')}`
+    : activeSessionId
+      ? `TK-${activeSessionId.slice(0, 6).toUpperCase()}`
+      : ''
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Citizen Digital Token Desk</h2>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Join an active civic queue and track your position, token, &amp; wait time.
+          <div className="flex items-center space-x-2">
+            <h2 className="text-xl font-black text-slate-900">
+              Citizen Digital Token Desk
+            </h2>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+              Self-Service Queue Desk
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Join an active public queue, obtain a digital token, and track your deterministic wait time in real-time.
           </p>
         </div>
+
         {activeSessionId && (
-          <span className="text-xs font-mono px-2 py-1 bg-slate-100 text-slate-700 rounded border border-slate-200">
-            Token: {activeSessionId.slice(0, 8)}...
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200">
+              Token {tokenDisplay}
+            </span>
+          </div>
         )}
       </div>
 
-      {citizenError && (
-        <div id="citizen-error-msg" className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm">
-          <strong>Error:</strong> {citizenError}
-        </div>
-      )}
-
-      {!currentUser && (
-        <div className="p-3 mb-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm flex items-center justify-between">
-          <span>Sign in as a Citizen or select a Quick Demo role to issue verified queue tokens.</span>
+      {/* Recoverable Notice Banner (e.g. after stale 404 session recovery) */}
+      {sessionNotice && (
+        <div
+          id="stale-session-notice"
+          className="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs sm:text-sm flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-2">
+            <span className="font-bold uppercase tracking-wider text-[10px] bg-sky-200 text-sky-900 px-1.5 py-0.5 rounded">
+              NOTICE
+            </span>
+            <span>{sessionNotice}</span>
+          </div>
           <button
-            onClick={() => onQuickLogin('citizen@queless.gov.in', 'CitizenPass123!')}
-            className="font-bold underline ml-2 cursor-pointer"
+            type="button"
+            onClick={onClearSessionNotice}
+            className="text-sky-600 hover:text-sky-800 font-bold ml-2 cursor-pointer"
           >
-            Sign In as Citizen
+            &times;
           </button>
         </div>
       )}
 
+      {/* Citizen Error Message */}
+      {citizenError && (
+        <div
+          id="citizen-error-msg"
+          className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm"
+        >
+          <strong>Notice:</strong> {citizenError}
+        </div>
+      )}
+
+      {/* FORM: Issue New Digital Token */}
       {!activeSessionId ? (
-        /* Join Queue Form */
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="facility-service" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="facility-service"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
                 Select Public Service
               </label>
               <select
@@ -104,8 +146,11 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
             </div>
 
             <div>
-              <label htmlFor="citizen-name" className="block text-xs font-semibold text-slate-700 mb-1">
-                Citizen Identifier / Name
+              <label
+                htmlFor="citizen-name"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Citizen Full Name
               </label>
               <input
                 id="citizen-name"
@@ -116,33 +161,62 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+
+            <div>
+              <label
+                htmlFor="citizen-email"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Email Address
+              </label>
+              <input
+                id="citizen-email"
+                type="email"
+                value={citizenEmail}
+                onChange={(e) => onChangeCitizenEmail(e.target.value)}
+                placeholder="citizen@queless.gov.in"
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <button
               id="btn-join-queue"
+              type="button"
               onClick={onJoinQueue}
               disabled={citizenLoading || (services.length === 0 && !selectedDemoServiceId)}
               className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
-              {citizenLoading ? 'Issuing Token...' : 'Join Queue / Issue Token'}
+              {citizenLoading ? 'Issuing Digital Token...' : 'Issue Digital Token'}
             </button>
+
+            {!currentUser && (
+              <span className="text-xs text-slate-500">
+                Low-friction citizen access. An unprivileged citizen token session will be issued automatically.
+              </span>
+            )}
           </div>
         </div>
       ) : userStatus ? (
-        /* Active Live Ticket Display */
+        /* LIVE ACTIVE TICKET DISPLAY */
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-slate-50">
+          <div className="p-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
-                  {userStatus.service.name}
-                </span>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {userStatus.session.user_id ? userStatus.session.user_id : 'Citizen Ticket'}
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
+                    {userStatus.service.name}
+                  </span>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-900">
+                    {tokenDisplay}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                  {citizenName || userStatus.session.user_id || 'Citizen Participant'}
                 </h3>
-                <p className="text-xs font-mono text-slate-500">
-                  Session ID: {userStatus.session.id}
+                <p className="text-[11px] font-mono text-slate-400">
+                  Ref: {userStatus.session.id}
                 </p>
               </div>
 
@@ -238,13 +312,31 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
             {/* Polling indication and actions */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4 mt-4 border-t border-indigo-100 text-xs">
               <div className="text-slate-500 flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Auto-updating via HTTP short polling (5s interval)</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isTerminalTicket ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'
+                  }`}
+                />
+                <span>
+                  {isTerminalTicket
+                    ? 'Queue session ended. Polling stopped.'
+                    : 'Auto-updating via HTTP short polling (5s interval)'}
+                </span>
               </div>
 
               <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={onRefreshTicket}
+                  disabled={citizenLoading}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-medium transition cursor-pointer"
+                >
+                  Refresh
+                </button>
+
                 {!isTerminalTicket ? (
                   <button
+                    type="button"
                     onClick={onCancelTicket}
                     disabled={citizenLoading}
                     className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 font-medium transition cursor-pointer"
@@ -253,6 +345,7 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={onDismissTicket}
                     className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition cursor-pointer"
                   >
@@ -263,11 +356,11 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
             </div>
           </div>
 
-          {/* Operator Desk (passed as children) */}
+          {/* Operator Desk / Actions (passed as children) */}
           {children}
         </div>
       ) : (
-        <div className="p-4 text-center text-sm text-slate-500">
+        <div className="p-6 text-center text-sm text-slate-500">
           Loading digital token details...
         </div>
       )}

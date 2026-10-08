@@ -125,4 +125,24 @@ test.describe('QueueLess Bharat — M6.1 India Demo Coverage E2E Suite', () => {
     await page.locator('#city-select').selectOption('Delhi')
     await expect(page.locator('#facility-select')).toContainText('AIIMS New Delhi')
   })
+
+  test('Test 6: Expanded 20 urban markets and diverse categories are selectable', async ({
+    page,
+  }) => {
+    // Select Hyderabad
+    await page.locator('#city-select').selectOption('Hyderabad')
+    await expect(page.locator('#facility-select')).toContainText('Osmania General Hospital')
+
+    // Select Ahmedabad
+    await page.locator('#city-select').selectOption('Ahmedabad')
+    await expect(page.locator('#facility-select')).toContainText('Gujarat University')
+
+    // Select Chandigarh
+    await page.locator('#city-select').selectOption('Chandigarh')
+    await expect(page.locator('#facility-select')).toContainText('PGIMER')
+
+    // Select Kochi
+    await page.locator('#city-select').selectOption('Kochi')
+    await expect(page.locator('#facility-select')).toContainText('Grand Cochin Heritage Hotel')
+  })
 })
