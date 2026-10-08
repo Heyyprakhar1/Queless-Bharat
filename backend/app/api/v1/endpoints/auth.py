@@ -5,14 +5,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_admin, get_current_user
+from app.core.rate_limit import rate_limit_auth_login, rate_limit_auth_register
 from app.db.session import get_db
 from app.domain.exceptions import DomainError
 from app.domain.models import User
 from app.schemas.auth import (
+    AdminCreateUserRequest,
+    CitizenRegisterRequest,
     TokenResponse,
     UserLoginRequest,
-    UserRegisterRequest,
     UserResponse,
 )
 from app.services.auth_service import AuthService
@@ -24,15 +26,38 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_auth_register)],
 )
 async def register(
-    data: UserRegisterRequest,
+    data: CitizenRegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserResponse:
-    """Register a new platform user identity."""
+    """Public registration for citizens. Role is strictly assigned as CITIZEN."""
     auth_svc = AuthService(db)
     try:
-        user = await auth_svc.register_user(data)
+        user = await auth_svc.register_citizen(data)
+    except DomainError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    return UserResponse.model_validate(user)
+
+
+@router.post(
+    "/admin/users",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_privileged_user(
+    data: AdminCreateUserRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
+) -> UserResponse:
+    """Administrator-only workflow for provisioning privileged or scoped accounts (OPERATOR, ADMIN)."""
+    auth_svc = AuthService(db)
+    try:
+        user = await auth_svc.create_privileged_user(data)
     except DomainError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -45,6 +70,7 @@ async def register(
     "/login",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit_auth_login)],
 )
 async def login(
     data: UserLoginRequest,

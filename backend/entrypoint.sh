@@ -11,7 +11,8 @@ fi
 # Run seed script if requested
 if [ "${SEED_DATA:-false}" = "true" ]; then
     echo "Seeding initial platform data..."
-    python scripts/seed_data.py || echo "Seed script completed or skipped."
+    python scripts/seed_data.py
+    echo "Platform data seeded successfully."
 fi
 
 # Execute main container command with PID 1 signal propagation

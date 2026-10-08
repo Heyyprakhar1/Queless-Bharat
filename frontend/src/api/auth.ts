@@ -1,6 +1,5 @@
 import type { LoginCredentials, RegisterData, TokenResponse, User } from '../types/auth'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { API_BASE_URL, fetchWithTimeout } from './client'
 
 const TOKEN_KEY = 'queless_access_token'
 const USER_KEY = 'queless_auth_user'
@@ -35,7 +34,7 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 export async function login(credentials: LoginCredentials): Promise<TokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -55,13 +54,17 @@ export async function login(credentials: LoginCredentials): Promise<TokenRespons
 }
 
 export async function register(data: RegisterData): Promise<TokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      email: data.email,
+      password: data.password,
+      full_name: data.full_name,
+    }),
   })
 
   if (!response.ok) {
@@ -79,7 +82,7 @@ export async function getMe(): Promise<User> {
     throw new Error('Not authenticated')
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/me`, {
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${token}`,
@@ -103,7 +106,7 @@ export async function logout(): Promise<void> {
   const token = getAuthToken()
   if (token) {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+      await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',

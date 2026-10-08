@@ -99,9 +99,13 @@ class QueueService:
                 raise DuplicateIdempotencyKeyError(idempotency_key) from exc
             raise
 
-    async def get_queue_session(self, session_id: uuid.UUID) -> QueueSession:
-        """Retrieves a queue session by identifier."""
+    async def get_queue_session(
+        self, session_id: uuid.UUID, for_update: bool = False
+    ) -> QueueSession:
+        """Retrieves a queue session by identifier, optionally acquiring a row-level lock."""
         stmt = select(QueueSession).where(QueueSession.id == session_id)
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         session_obj = (await self.session.execute(stmt)).scalar_one_or_none()
         if not session_obj:
             raise ResourceNotFoundError("QueueSession", str(session_id))
@@ -113,8 +117,8 @@ class QueueService:
         counter_id: uuid.UUID | None = None,
         idempotency_key: str | None = None,
     ) -> QueueSession:
-        """Transitions a WAITING participant to IN_SERVICE and opens a ServiceSession."""
-        queue_session = await self.get_queue_session(session_id)
+        """Transitions a WAITING participant to IN_SERVICE and opens a ServiceSession (concurrency safe)."""
+        queue_session = await self.get_queue_session(session_id, for_update=True)
 
         # 1. Check idempotency key
         if idempotency_key:
@@ -132,7 +136,20 @@ class QueueService:
         if queue_session.status != QueueSessionStatus.WAITING:
             raise InvalidStateTransitionError(queue_session.status, QueueSessionStatus.IN_SERVICE)
 
-        # 3. Validate counter if specified
+        # 3. Ensure no concurrent/duplicate active ServiceSession exists
+        existing_ss_stmt = (
+            select(ServiceSession)
+            .where(
+                ServiceSession.queue_session_id == session_id,
+                ServiceSession.completed_at.is_(None),
+            )
+            .limit(1)
+        )
+        existing_ss = (await self.session.execute(existing_ss_stmt)).scalar_one_or_none()
+        if existing_ss:
+            raise DomainError(f"Queue session {session_id} already has an active service session")
+
+        # 4. Validate counter if specified
         if counter_id:
             c_stmt = select(Counter).where(Counter.id == counter_id)
             counter = (await self.session.execute(c_stmt)).scalar_one_or_none()
@@ -183,8 +200,8 @@ class QueueService:
         session_id: uuid.UUID,
         idempotency_key: str | None = None,
     ) -> QueueSession:
-        """Transitions an IN_SERVICE participant to COMPLETED and closes the ServiceSession."""
-        queue_session = await self.get_queue_session(session_id)
+        """Transitions an IN_SERVICE participant to COMPLETED and closes the ServiceSession (concurrency safe)."""
+        queue_session = await self.get_queue_session(session_id, for_update=True)
 
         # 1. Check idempotency key
         if idempotency_key:
@@ -206,7 +223,7 @@ class QueueService:
         queue_session.status = QueueSessionStatus.COMPLETED
         queue_session.completed_at = now
 
-        # 3. Find and close open ServiceSession
+        # 3. Find and close open ServiceSession with row lock
         ss_stmt = (
             select(ServiceSession)
             .where(
@@ -214,6 +231,7 @@ class QueueService:
                 ServiceSession.completed_at.is_(None),
             )
             .order_by(ServiceSession.started_at.desc())
+            .with_for_update()
             .limit(1)
         )
         active_service_session = (await self.session.execute(ss_stmt)).scalar_one_or_none()
@@ -252,8 +270,8 @@ class QueueService:
         reason: str | None = None,
         idempotency_key: str | None = None,
     ) -> QueueSession:
-        """Transitions a WAITING participant to CANCELLED."""
-        queue_session = await self.get_queue_session(session_id)
+        """Transitions a WAITING participant to CANCELLED (concurrency safe)."""
+        queue_session = await self.get_queue_session(session_id, for_update=True)
 
         # 1. Check idempotency key
         if idempotency_key:

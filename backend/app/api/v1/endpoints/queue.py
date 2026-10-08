@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_operator, get_current_user
+from app.core.rate_limit import rate_limit_queue_checkin
 from app.db.session import get_db
 from app.domain.enums import UserRole
 from app.domain.models import QueueSession, User
@@ -49,7 +50,12 @@ def _verify_session_access(session: QueueSession, user: User, action: str = "vie
         return
 
 
-@router.post("/check-in", response_model=QueueSessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/check-in",
+    response_model=QueueSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_queue_checkin)],
+)
 async def check_in(
     data: CheckInRequest,
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -38,10 +38,11 @@ async def create_service(
 async def list_services(
     db: Annotated[AsyncSession, Depends(get_db)],
     location_id: Annotated[uuid.UUID | None, Query(description="Filter by location")] = None,
+    limit: Annotated[int, Query(description="Maximum services to return", ge=1, le=100)] = 100,
 ) -> list[ServiceResponse]:
     """List operational services, optionally filtered by location (Public catalog)."""
     catalog = CatalogService(db)
-    services = await catalog.list_services(location_id=location_id)
+    services = await catalog.list_services(location_id=location_id, limit=limit)
     return [ServiceResponse.model_validate(s) for s in services]
 
 

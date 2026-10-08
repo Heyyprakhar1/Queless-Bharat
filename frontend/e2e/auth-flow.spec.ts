@@ -59,7 +59,8 @@ async function setupIsolatedService(request: any, name: string) {
   // Register dedicated operator assigned to this service for testing authorized counter actions
   const opEmail = `op.${svc.id.slice(0, 8)}@queless.gov.in`
   const opPass = 'OperatorPass123!'
-  await request.post(`${BACKEND_URL}/api/v1/auth/register`, {
+  await request.post(`${BACKEND_URL}/api/v1/auth/admin/users`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       email: opEmail,
       password: opPass,

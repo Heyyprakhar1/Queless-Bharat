@@ -1,6 +1,8 @@
 """Data Transfer Objects and schema validation layer."""
 
 from app.schemas.auth import (
+    AdminCreateUserRequest,
+    CitizenRegisterRequest,
     TokenResponse,
     UserLoginRequest,
     UserRegisterRequest,
@@ -25,8 +27,10 @@ from app.schemas.queue import (
 from app.schemas.service import ServiceCreate, ServiceResponse
 
 __all__ = [
+    "AdminCreateUserRequest",
     "CancelQueueRequest",
     "CheckInRequest",
+    "CitizenRegisterRequest",
     "CompleteServiceRequest",
     "CounterCreate",
     "CounterResponse",

@@ -51,9 +51,9 @@ class CatalogService:
         )
         return [row[0] for row in result.all()]
 
-    async def list_locations(self, city: str | None = None) -> list[Location]:
+    async def list_locations(self, city: str | None = None, limit: int = 100) -> list[Location]:
         """Lists registered locations, optionally filtered by city."""
-        stmt = select(Location).order_by(Location.name.asc())
+        stmt = select(Location).order_by(Location.name.asc()).limit(min(max(1, limit), 100))
         if city:
             stmt = stmt.where(func.lower(Location.city) == city.strip().lower())
         result = await self.session.execute(stmt)
@@ -83,9 +83,11 @@ class CatalogService:
             raise ResourceNotFoundError("Service", str(service_id))
         return service
 
-    async def list_services(self, location_id: uuid.UUID | None = None) -> list[Service]:
+    async def list_services(
+        self, location_id: uuid.UUID | None = None, limit: int = 100
+    ) -> list[Service]:
         """Lists services, optionally filtered by location."""
-        stmt = select(Service).order_by(Service.name.asc())
+        stmt = select(Service).order_by(Service.name.asc()).limit(min(max(1, limit), 100))
         if location_id:
             stmt = stmt.where(Service.location_id == location_id)
         result = await self.session.execute(stmt)
@@ -106,9 +108,11 @@ class CatalogService:
         await self.session.refresh(counter)
         return counter
 
-    async def list_counters(self, service_id: uuid.UUID | None = None) -> list[Counter]:
+    async def list_counters(
+        self, service_id: uuid.UUID | None = None, limit: int = 100
+    ) -> list[Counter]:
         """Lists counters, optionally filtered by service."""
-        stmt = select(Counter).order_by(Counter.name.asc())
+        stmt = select(Counter).order_by(Counter.name.asc()).limit(min(max(1, limit), 100))
         if service_id:
             stmt = stmt.where(Counter.service_id == service_id)
         result = await self.session.execute(stmt)

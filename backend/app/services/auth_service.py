@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, get_password_hash, verify_password
+from app.domain.enums import UserRole
 from app.domain.exceptions import DomainError, ResourceNotFoundError
 from app.domain.models import Service, User
-from app.schemas.auth import UserRegisterRequest
+from app.schemas.auth import AdminCreateUserRequest, CitizenRegisterRequest
 
 
 class AuthService:
@@ -17,15 +18,39 @@ class AuthService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def register_user(self, data: UserRegisterRequest) -> User:
-        """Registers a new platform user with unique email and bcrypt-hashed credentials."""
+    async def register_citizen(self, data: CitizenRegisterRequest) -> User:
+        """Public registration: strictly creates an unprivileged CITIZEN identity."""
         # 1. Uniqueness check
         stmt = select(User).where(User.email == data.email.lower())
         existing = (await self.session.execute(stmt)).scalar_one_or_none()
         if existing:
             raise DomainError(f"User with email '{data.email}' already exists")
 
-        # 2. Operator assignment validation
+        # 2. Secure password hashing
+        hashed_pw = get_password_hash(data.password)
+
+        user = User(
+            email=data.email.lower(),
+            full_name=data.full_name,
+            hashed_password=hashed_pw,
+            role=UserRole.CITIZEN,
+            is_active=True,
+            assigned_service_id=None,
+        )
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+
+    async def create_privileged_user(self, data: AdminCreateUserRequest) -> User:
+        """Administrator-only provisioning for privileged (OPERATOR, ADMIN) or scoped identities."""
+        # 1. Uniqueness check
+        stmt = select(User).where(User.email == data.email.lower())
+        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            raise DomainError(f"User with email '{data.email}' already exists")
+
+        # 2. Service assignment validation
         if data.assigned_service_id:
             svc_stmt = select(Service).where(Service.id == data.assigned_service_id)
             service = (await self.session.execute(svc_stmt)).scalar_one_or_none()
@@ -47,6 +72,10 @@ class AuthService:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def register_user(self, data: CitizenRegisterRequest) -> User:
+        """Backward-compatible alias delegating to register_citizen."""
+        return await self.register_citizen(data)
 
     async def authenticate_user(self, email: str, password: str) -> tuple[User, str]:
         """Validates credentials and issues a signed JWT access token."""

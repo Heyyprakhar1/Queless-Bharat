@@ -21,6 +21,7 @@ Instead of offering unrealistic promises of eliminating physical queues entirely
 - **Milestone 4: Identity & RBAC Boundary** — Stateless JWT, User Roles (`CITIZEN`, `OPERATOR`, `ADMIN`), BOLA/IDOR Protection, and Browser E2E Security Suite — *Complete*
 - **Milestone 5 / M5.1: Container Packaging, Docker Compose Stack & Release Engineering** — Multi-stage non-root images, Compose orchestration, health-gated readiness, and GitHub Actions CI with Trivy scanning — *Implemented & Verified*
 - **Milestone 6.1: India Demo Coverage & Facility Dataset** — 8 Major Cities (Pune Showcase), verified facilities, useful civic services, simulated queue scenarios, and pure deterministic wait projections — *Complete*
+- **Milestone 6.1.1: Security, Reliability & Architecture Hardening** — Privilege escalation prevention, pessimistic row-level locking concurrency safety, DB counter precedence, production secret fail-closed enforcement, sliding-window rate limiting, HTTP security headers, and frontend component modularization — *Complete*
 
 > [!NOTE]
 > **Explicit Non-Claims:**
@@ -28,6 +29,7 @@ Instead of offering unrealistic promises of eliminating physical queues entirely
 > - Live external facility telemetry integrations do not exist.
 > - Production deployment is not complete.
 > - Trivy vulnerability scanning operates as an informational security gate, not an automated release blocker.
+> - Application does not claim complete immunity to sophisticated DDoS attacks; layered defense-in-depth is implemented at the application tier alongside infrastructure protections.
 
 ---
 
@@ -66,6 +68,54 @@ Each city includes representative, verified civic facilities across three primar
 - **Long Queue:** e.g., Pune RTO Vehicle Registration (26 waiting, 2 active counters &rarr; ~67 mins).
 - **Insufficient-Data Scenario:** e.g., Sassoon General Hospital Radiology & Ultrasound (4 waiting, 1 active counter, 0 completed service sessions &rarr; Estimate unavailable: *"Insufficient sample data: no completed service sessions recorded"*).
 - **Halted / Zero Active Counters:** e.g., Pune Municipal Corporation Birth & Death Certificate (5 waiting, 0 active counters &rarr; Estimate unavailable: *"No active counters available to serve waiting queue"*).
+
+---
+
+## M6.1.1 — Security, Reliability & Architecture Hardening
+
+M6.1.1 addresses architectural, concurrency, security, and reliability defects identified during production audits:
+
+### 1. Privilege Escalation Prevention & Secure User Registration
+- Public registration (`POST /api/v1/auth/register`) strictly validates incoming payloads via `CitizenRegisterRequest` (`extra="forbid"`) and **unconditionally provisions the `CITIZEN` role**. Arbitrary role assignment, administrative elevation, or service scope injection is forbidden at the schema boundary.
+- Privileged account creation (`ADMIN`, `OPERATOR`, `assigned_service_id`) is strictly restricted to authenticated administrators through protected endpoints (`POST /api/v1/auth/admin/users` and `POST /api/v1/admin/users`) requiring `get_current_admin` RBAC authorization.
+
+### 2. Concurrency-Safe Queue State Transitions
+- Eliminated read-validate-mutate-commit race conditions across `QueueSession` lifecycle transitions (`start_service`, `complete_service`, `cancel_queue_session`).
+- Enforces pessimistic row-level locking via PostgreSQL `SELECT ... FOR UPDATE` with `execution_options(populate_existing=True)` to prevent SQLAlchemy identity map staleness under high concurrency.
+- Added active `ServiceSession` duplicate guard ensuring concurrent calls to `start_service` or `complete_service` cannot double-provision or create orphaned sessions.
+
+### 3. Counter & Observation Precedence
+- The registered `Counter` table status in PostgreSQL is the authoritative source of truth for active service capacity.
+- If registered counters exist and 0 counters are active, effective capacity is strictly 0 and the queue is correctly reported as halted. Stale or fabricated observations cannot resurrect counter capacity.
+- External or user-reported observations are only evaluated if 0 counters are registered in the database AND the observation timestamp is fresh ($\le 1800\text{s}$).
+
+### 4. Production Secret Fail-Closed Enforcement
+- In `staging` and `production` environments, `AUTH_SECRET_KEY` must be configured with a cryptographically strong secret ($\ge 32$ characters) that does not contain default/insecure markers (`dev-`, `insecure`, `secret`, `replace-in-production`). Weak keys fail closed on application startup.
+- Container entrypoint (`backend/entrypoint.sh`) enforces `set -e` failure propagation so failed database migrations or seed executions halt container startup visibly rather than continuing degraded.
+
+### 5. Rate Limiting & Abuse Controls
+- In-memory sliding window rate limiter (`SlidingWindowRateLimiter`) with microsecond resolution protects sensitive public endpoints:
+  - Auth Login (`POST /api/v1/auth/login`)
+  - Citizen Registration (`POST /api/v1/auth/register`)
+  - Queue Check-in (`POST /api/v1/queue/check-in`)
+- Exceeded thresholds return standard `HTTP 429 Too Many Requests` with informative `Retry-After` headers. Limits are dynamically configurable via environment variables (`RATE_LIMIT_LOGIN_MAX`, `RATE_LIMIT_LOGIN_WINDOW`, etc.).
+
+### 6. Timeouts, Bounded Operations & Security Headers
+- Database connection pool configured with explicit timeouts (`pool_timeout=10.0`, `pool_recycle=1800`) preventing thread exhaustion.
+- Collection query endpoints enforce upper bounds (`limit <= 100`).
+- Frontend API layer utilizes `fetchWithTimeout` with `AbortController` (15-second default timeout) to prevent hung network promises.
+- `SecurityHeadersMiddleware` automatically injects `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+- Unhandled server exceptions are intercepted by a global exception handler, logging structured request details while returning sanitized 500 error responses without SQL or stack trace leaks.
+
+### 7. Modular Frontend Architecture
+- Refactored monolithic `frontend/src/App.tsx` into modular, single-responsibility components in `frontend/src/components/`:
+  - `Header.tsx`: Navigation, system status, authenticated user & role badges, quick demo buttons.
+  - `IndiaDemoExplorer.tsx`: City &rarr; Facility &rarr; Service cascading selector, facility details, and deterministic wait projection card.
+  - `CitizenTokenDesk.tsx`: Token issuance form, live ticket state (`WAITING`, `IN_SERVICE`, `COMPLETED`, `CANCELLED`), personal wait estimate, and cancellation/dismissal controls.
+  - `OperatorDesk.tsx`: RBAC-guarded counter staff controls (`startService`, `completeService`).
+  - `HealthPanel.tsx`: Live service and database connectivity indicators.
+  - `AuthModal.tsx`: Secure modal for login and citizen registration.
+  - `Footer.tsx`: Application footer and milestone attribution.
 
 ---
 
@@ -158,7 +208,7 @@ Default local dev ports:
 
 ### 4. Automated Testing Suites
 
-- **Backend Pytest Suite:** 75 tests covering unit estimators, transaction rollbacks, API contract hardening, authentication/RBAC, and M6.1 India demo catalog endpoints.
+- **Backend Pytest Suite:** 93 tests covering unit estimators, transaction rollbacks, API contract hardening, authentication/RBAC, pessimistic concurrency locking, counter observation precedence, config fail-closed validation, sliding-window rate limiting, and M6.1 India demo catalog endpoints.
 - **Frontend Playwright E2E Suites:** 21 tests covering:
   - `e2e/india-demo-flow.spec.ts`: City &rarr; Facility &rarr; Service cascading flow, Pune showcase, deterministic wait estimate rendering, simulated data banners, and insufficient-data states.
   - `e2e/queue-flow.spec.ts`: End-to-end citizen queue join, polling updates, operator desk lifecycle transitions, and cancellation.

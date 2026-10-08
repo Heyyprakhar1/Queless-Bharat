@@ -42,8 +42,9 @@ async def create_counter(
 async def list_counters(
     db: Annotated[AsyncSession, Depends(get_db)],
     service_id: Annotated[uuid.UUID | None, Query(description="Filter by service")] = None,
+    limit: Annotated[int, Query(description="Maximum counters to return", ge=1, le=100)] = 100,
 ) -> list[CounterResponse]:
     """List counters, optionally filtered by service (Public catalog)."""
     catalog = CatalogService(db)
-    counters = await catalog.list_counters(service_id=service_id)
+    counters = await catalog.list_counters(service_id=service_id, limit=limit)
     return [CounterResponse.model_validate(c) for c in counters]

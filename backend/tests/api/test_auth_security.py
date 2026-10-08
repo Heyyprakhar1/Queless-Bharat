@@ -21,7 +21,6 @@ class TestAuthenticationSecurity:
                 "email": "sunil.verma@example.com",
                 "password": "SecurePassword123!",
                 "full_name": "Sunil Verma",
-                "role": "CITIZEN",
             },
         )
         assert reg_resp.status_code == 201
@@ -129,6 +128,130 @@ class TestAuthenticationSecurity:
         )
         assert res_expired.status_code == 401
         assert "expired" in res_expired.json()["detail"].lower()
+
+    async def test_anonymous_registration_strictly_creates_citizen(
+        self, client: httpx.AsyncClient
+    ):
+        """1. Verifies anonymous registration always assigns CITIZEN role."""
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "anon.citizen@example.com",
+                "password": "Password123!",
+                "full_name": "Anon Citizen",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["role"] == "CITIZEN"
+        assert data["assigned_service_id"] is None
+
+    async def test_anonymous_registration_rejects_admin_role_escalation(
+        self, client: httpx.AsyncClient
+    ):
+        """2. Verifies anonymous caller cannot inject ADMIN role via public register."""
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "hacker.admin@example.com",
+                "password": "Password123!",
+                "full_name": "Hacker Admin",
+                "role": "ADMIN",
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_anonymous_registration_rejects_operator_role_escalation(
+        self, client: httpx.AsyncClient
+    ):
+        """3. Verifies anonymous caller cannot inject OPERATOR role via public register."""
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "hacker.operator@example.com",
+                "password": "Password123!",
+                "full_name": "Hacker Operator",
+                "role": "OPERATOR",
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_anonymous_registration_rejects_service_scope_assignment(
+        self, client: httpx.AsyncClient
+    ):
+        """4. Verifies anonymous caller cannot self-assign operator service scope."""
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "hacker.scope@example.com",
+                "password": "Password123!",
+                "full_name": "Hacker Scope",
+                "assigned_service_id": str(uuid.uuid4()),
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_non_admin_cannot_create_privileged_accounts(
+        self, unauth_client: httpx.AsyncClient, citizen_auth, operator_auth
+    ):
+        """5. Verifies authenticated non-admin cannot access admin user creation endpoint."""
+        _, _, cit_hdrs = citizen_auth
+        _, _, op_hdrs = operator_auth
+
+        payload = {
+            "email": "new.op@example.com",
+            "password": "Password123!",
+            "full_name": "New Operator",
+            "role": "OPERATOR",
+        }
+
+        # Anonymous caller -> 401
+        anon_resp = await unauth_client.post("/api/v1/auth/admin/users", json=payload)
+        assert anon_resp.status_code == 401
+
+        # Citizen -> 403
+        cit_resp = await unauth_client.post(
+            "/api/v1/auth/admin/users", json=payload, headers=cit_hdrs
+        )
+        assert cit_resp.status_code == 403
+
+        # Operator -> 403
+        op_resp = await unauth_client.post(
+            "/api/v1/auth/admin/users", json=payload, headers=op_hdrs
+        )
+        assert op_resp.status_code == 403
+
+    async def test_authorized_admin_workflow_creates_operator_and_admin(
+        self, client: httpx.AsyncClient, admin_auth
+    ):
+        """6. Verifies authorized administrator can create operator and admin accounts."""
+        _, _, admin_hdrs = admin_auth
+
+        # Admin creates Operator
+        op_payload = {
+            "email": "legit.operator@example.com",
+            "password": "Password123!",
+            "full_name": "Legit Operator",
+            "role": "OPERATOR",
+        }
+        op_resp = await client.post(
+            "/api/v1/auth/admin/users", json=op_payload, headers=admin_hdrs
+        )
+        assert op_resp.status_code == 201
+        assert op_resp.json()["role"] == "OPERATOR"
+
+        # Admin creates Admin via alias /api/v1/admin/users
+        admin_payload = {
+            "email": "new.admin@example.com",
+            "password": "Password123!",
+            "full_name": "New Admin",
+            "role": "ADMIN",
+        }
+        adm_resp = await client.post(
+            "/api/v1/admin/users", json=admin_payload, headers=admin_hdrs
+        )
+        assert adm_resp.status_code == 201
+        assert adm_resp.json()["role"] == "ADMIN"
 
 
 class TestRoleBasedAuthorization:

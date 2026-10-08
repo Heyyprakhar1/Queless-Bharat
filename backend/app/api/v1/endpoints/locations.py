@@ -40,10 +40,11 @@ async def list_cities(
 async def list_locations(
     db: Annotated[AsyncSession, Depends(get_db)],
     city: Annotated[str | None, Query(description="Filter locations by city")] = None,
+    limit: Annotated[int, Query(description="Maximum locations to return", ge=1, le=100)] = 100,
 ) -> list[LocationResponse]:
     """List registered locations, optionally filtered by city (Public catalog)."""
     service = CatalogService(db)
-    locations = await service.list_locations(city=city)
+    locations = await service.list_locations(city=city, limit=limit)
     return [LocationResponse.model_validate(loc) for loc in locations]
 
 

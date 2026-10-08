@@ -18,11 +18,43 @@ def test_default_settings() -> None:
 
 def test_environment_validation() -> None:
     """Verifies environment validation accepts valid values and rejects invalid ones."""
-    valid_settings = Settings(ENVIRONMENT="staging")
+    valid_settings = Settings(
+        ENVIRONMENT="staging",
+        AUTH_SECRET_KEY="valid-staging-secret-key-min-32-chars-long!",
+    )
     assert valid_settings.ENVIRONMENT == "staging"
 
     with pytest.raises(ValidationError):
         Settings(ENVIRONMENT="invalid_env_name")
+
+
+def test_production_secret_fail_closed() -> None:
+    """Verifies production and staging fail closed if AUTH_SECRET_KEY is default or too short."""
+    # Production with default dev key fails
+    with pytest.raises(ValidationError) as exc:
+        Settings(ENVIRONMENT="production")
+    assert "AUTH_SECRET_KEY" in str(exc.value)
+
+    # Staging with default dev key fails
+    with pytest.raises(ValidationError) as exc:
+        Settings(ENVIRONMENT="staging")
+    assert "AUTH_SECRET_KEY" in str(exc.value)
+
+    # Staging with short key (< 32 chars) fails
+    with pytest.raises(ValidationError) as exc:
+        Settings(ENVIRONMENT="staging", AUTH_SECRET_KEY="short-secret-key")
+    assert "at least 32 characters" in str(exc.value)
+
+    # Development allows default key for local convenience
+    dev_settings = Settings(ENVIRONMENT="development")
+    assert dev_settings.ENVIRONMENT == "development"
+
+    # Production succeeds with strong key >= 32 chars
+    prod_settings = Settings(
+        ENVIRONMENT="production",
+        AUTH_SECRET_KEY="production-secure-random-token-minimum-32-chars!",
+    )
+    assert prod_settings.ENVIRONMENT == "production"
 
 
 def test_cors_origin_parsing() -> None:

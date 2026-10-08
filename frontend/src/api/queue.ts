@@ -6,14 +6,13 @@ import type {
   UserQueueStatusResponse,
 } from '../types/queue'
 import { getAuthHeaders } from './auth'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { API_BASE_URL, fetchWithTimeout } from './client'
 
 /**
  * Fetches distinct cities with registered facilities.
  */
 export async function fetchCities(): Promise<string[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/locations/cities`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/locations/cities`, {
     headers: {
       Accept: 'application/json',
       ...getAuthHeaders(),
@@ -32,7 +31,7 @@ export async function fetchLocations(city?: string): Promise<Location[]> {
   const url = city
     ? `${API_BASE_URL}/api/v1/locations?city=${encodeURIComponent(city)}`
     : `${API_BASE_URL}/api/v1/locations`
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       Accept: 'application/json',
       ...getAuthHeaders(),
@@ -51,7 +50,7 @@ export async function fetchServices(locationId?: string): Promise<Service[]> {
   const url = locationId
     ? `${API_BASE_URL}/api/v1/services?location_id=${encodeURIComponent(locationId)}`
     : `${API_BASE_URL}/api/v1/services`
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       Accept: 'application/json',
       ...getAuthHeaders(),
@@ -67,7 +66,7 @@ export async function fetchServices(locationId?: string): Promise<Service[]> {
  * Fetches queue state and deterministic wait projection for a specific service.
  */
 export async function fetchQueueStatus(serviceId: string): Promise<QueueStatusResponse> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/v1/services/${encodeURIComponent(serviceId)}/queue-status`,
     {
       headers: {
@@ -90,7 +89,7 @@ export async function checkInQueue(
   userId?: string,
   idempotencyKey?: string
 ): Promise<QueueSession> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/queue/check-in`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/queue/check-in`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -114,7 +113,7 @@ export async function checkInQueue(
  * Fetches user-specific queue status including 1-based position and personal estimate.
  */
 export async function fetchUserQueueStatus(sessionId: string): Promise<UserQueueStatusResponse> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/status`,
     {
       headers: {
@@ -138,7 +137,7 @@ export async function startService(
   counterId?: string,
   idempotencyKey?: string
 ): Promise<QueueSession> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/start`,
     {
       method: 'POST',
@@ -167,7 +166,7 @@ export async function completeService(
   sessionId: string,
   idempotencyKey?: string
 ): Promise<QueueSession> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/complete`,
     {
       method: 'POST',
@@ -196,7 +195,7 @@ export async function cancelQueueSession(
   reason?: string,
   idempotencyKey?: string
 ): Promise<QueueSession> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/api/v1/queue/${encodeURIComponent(sessionId)}/cancel`,
     {
       method: 'POST',

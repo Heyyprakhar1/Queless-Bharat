@@ -42,6 +42,61 @@ class EstimationService:
         self.session = session
         self.estimator = estimator or DeterministicQueueEstimator()
 
+    async def _resolve_effective_counters(
+        self, service_id: uuid.UUID, now: datetime
+    ) -> tuple[int, WaitObservation | None]:
+        """Resolves active counters with strict precedence:
+        1. If registered Counter entities exist for this service, the count of Counter(status=ACTIVE)
+           is authoritative. If 0 are active, effective count is 0 (service halted).
+           Stale or conflicting observations MUST NOT override 0 active counters.
+        2. If NO counters are registered in the DB table (unmanaged/crowdsourced service),
+           fall back to latest observation's active_counters ONLY if the observation exists,
+           has active_counters > 0, and is fresh (<= 1800 seconds / 30 minutes).
+        """
+        # Query total registered counters for the service
+        total_counters_stmt = (
+            select(func.count())
+            .select_from(Counter)
+            .where(Counter.service_id == service_id)
+        )
+        total_registered_counters = (await self.session.execute(total_counters_stmt)).scalar() or 0
+
+        # Query active counters
+        active_counter_stmt = (
+            select(func.count())
+            .select_from(Counter)
+            .where(
+                Counter.service_id == service_id,
+                Counter.status == CounterStatus.ACTIVE,
+            )
+        )
+        active_counters_count = (await self.session.execute(active_counter_stmt)).scalar() or 0
+
+        # Query latest observation
+        obs_stmt = (
+            select(WaitObservation)
+            .where(WaitObservation.service_id == service_id)
+            .order_by(WaitObservation.observed_at.desc())
+            .limit(1)
+        )
+        latest_observation = (await self.session.execute(obs_stmt)).scalar_one_or_none()
+
+        if total_registered_counters > 0:
+            # Registered counters in DB are authoritative
+            return active_counters_count, latest_observation
+
+        # Fallback to crowdsourced observation only when unmanaged AND fresh (<= 30 mins)
+        if (
+            latest_observation
+            and latest_observation.active_counters > 0
+            and latest_observation.observed_at
+        ):
+            obs_age_seconds = (now - latest_observation.observed_at).total_seconds()
+            if 0 <= obs_age_seconds <= 1800:
+                return latest_observation.active_counters, latest_observation
+
+        return 0, latest_observation
+
     async def get_service_queue_status(
         self,
         service_id: uuid.UUID,
@@ -77,16 +132,10 @@ class EstimationService:
         )
         in_service_count = (await self.session.execute(in_service_stmt)).scalar() or 0
 
-        # 3. Count active counters
-        counter_stmt = (
-            select(func.count())
-            .select_from(Counter)
-            .where(
-                Counter.service_id == service_id,
-                Counter.status == CounterStatus.ACTIVE,
-            )
+        # 3. Resolve active counters with authoritative DB counter precedence
+        effective_counters, latest_observation = await self._resolve_effective_counters(
+            service_id, now
         )
-        active_counters_count = (await self.session.execute(counter_stmt)).scalar() or 0
 
         # 4. Fetch recent completed service sessions (up to 50 recent sessions)
         ss_stmt = (
@@ -100,24 +149,6 @@ class EstimationService:
             .limit(50)
         )
         completed_sessions = list((await self.session.execute(ss_stmt)).scalars().all())
-
-        # 5. Fetch latest observation if available
-        obs_stmt = (
-            select(WaitObservation)
-            .where(WaitObservation.service_id == service_id)
-            .order_by(WaitObservation.observed_at.desc())
-            .limit(1)
-        )
-        latest_observation = (await self.session.execute(obs_stmt)).scalar_one_or_none()
-
-        # If no counters registered in DB table, fallback to latest observation counters if present
-        effective_counters = active_counters_count
-        if (
-            effective_counters == 0
-            and latest_observation
-            and latest_observation.active_counters > 0
-        ):
-            effective_counters = latest_observation.active_counters
 
         # 6. Calculate data freshness
         latest_timestamps: list[datetime] = []
@@ -239,33 +270,10 @@ class EstimationService:
         )
         in_service_count = (await self.session.execute(in_service_stmt)).scalar() or 0
 
-        # Active counters
-        counter_stmt = (
-            select(func.count())
-            .select_from(Counter)
-            .where(
-                Counter.service_id == service.id,
-                Counter.status == CounterStatus.ACTIVE,
-            )
+        # Active counters resolved via authoritative precedence
+        effective_counters, latest_observation = await self._resolve_effective_counters(
+            service.id, now
         )
-        active_counters_count = (await self.session.execute(counter_stmt)).scalar() or 0
-
-        # Latest observation fallback for active counters
-        obs_stmt = (
-            select(WaitObservation)
-            .where(WaitObservation.service_id == service.id)
-            .order_by(WaitObservation.observed_at.desc())
-            .limit(1)
-        )
-        latest_observation = (await self.session.execute(obs_stmt)).scalar_one_or_none()
-
-        effective_counters = active_counters_count
-        if (
-            effective_counters == 0
-            and latest_observation
-            and latest_observation.active_counters > 0
-        ):
-            effective_counters = latest_observation.active_counters
 
         queue_state = QueueStateSummary(
             waiting_count=waiting_count,

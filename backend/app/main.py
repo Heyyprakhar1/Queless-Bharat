@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.router import api_router
 from app.api.v1.endpoints.health import check_health
@@ -49,6 +50,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Enforces standard HTTP security defense headers on all outgoing responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        return response
+
+
 # Enforce explicit, configured CORS origins (never unrestricted wildcard)
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +71,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# HTTP defense-in-depth security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Structured request/response logging middleware
 app.add_middleware(LoggingMiddleware)
@@ -110,6 +127,22 @@ async def domain_error_handler(request: Request, exc: DomainError) -> JSONRespon
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Safe fail-closed 500 handler preventing database/stack trace disclosure."""
+    logger.error(
+        "unhandled_server_error",
+        path=request.url.path,
+        method=request.method,
+        error=str(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred. Please try again later."},
     )
 
 

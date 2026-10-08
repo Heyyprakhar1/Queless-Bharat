@@ -4,7 +4,7 @@ import json
 from functools import lru_cache
 from typing import Annotated, Any
 
-from pydantic import BeforeValidator, field_validator
+from pydantic import BeforeValidator, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     AUTH_SECRET_KEY: str = "dev-insecure-secret-key-replace-in-production-min-32-chars-long!"
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN_MAX: int = 100
+    RATE_LIMIT_LOGIN_WINDOW: int = 60
+    RATE_LIMIT_REGISTER_MAX: int = 50
+    RATE_LIMIT_REGISTER_WINDOW: int = 60
+    RATE_LIMIT_CHECKIN_MAX: int = 200
+    RATE_LIMIT_CHECKIN_WINDOW: int = 60
 
     # Database parameters
     POSTGRES_SERVER: str = "localhost"
@@ -67,6 +74,27 @@ class Settings(BaseSettings):
         if v_clean not in valid_envs:
             raise ValueError(f"ENVIRONMENT must be one of: {valid_envs}")
         return v_clean
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        """Fail closed if production/staging runs with default or weak secret key."""
+        insecure_defaults = {
+            "dev-insecure-secret-key-replace-in-production-min-32-chars-long!",
+            "secret",
+            "changeme",
+            "password",
+        }
+        if self.ENVIRONMENT in ("production", "staging"):
+            if not self.AUTH_SECRET_KEY or self.AUTH_SECRET_KEY in insecure_defaults:
+                raise ValueError(
+                    f"Production/staging environment requires a non-default, secure AUTH_SECRET_KEY. "
+                    f"Current value is insecure or default."
+                )
+            if len(self.AUTH_SECRET_KEY) < 32:
+                raise ValueError(
+                    f"AUTH_SECRET_KEY must be at least 32 characters in {self.ENVIRONMENT} mode."
+                )
+        return self
 
     @property
     def async_database_url(self) -> str:

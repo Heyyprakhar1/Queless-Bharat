@@ -8,17 +8,31 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from app.domain.enums import UserRole
 
 
-class UserRegisterRequest(BaseModel):
-    """Payload to register a new user identity."""
+class CitizenRegisterRequest(BaseModel):
+    """Payload for public citizen registration. Strictly unprivileged."""
 
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     email: EmailStr
-    password: str = Field(..., min_length=8, description="Minimum 8 characters")
+    password: str = Field(..., min_length=8, max_length=128, description="Minimum 8 characters")
+    full_name: str = Field(..., min_length=1, max_length=255)
+
+
+# Alias for backward compatibility
+UserRegisterRequest = CitizenRegisterRequest
+
+
+class AdminCreateUserRequest(BaseModel):
+    """Payload for administrator creating privileged or assigned identities."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128, description="Minimum 8 characters")
     full_name: str = Field(..., min_length=1, max_length=255)
     role: UserRole = Field(
         default=UserRole.CITIZEN,
-        description="Role: CITIZEN, OPERATOR, or ADMIN",
+        description="Assigned role: CITIZEN, OPERATOR, or ADMIN",
     )
     assigned_service_id: uuid.UUID | None = Field(
         default=None,

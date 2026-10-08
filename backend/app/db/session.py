@@ -18,6 +18,8 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    pool_timeout=10.0,
+    pool_recycle=1800,
 )
 
 async_session_factory = async_sessionmaker(
