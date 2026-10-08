@@ -117,7 +117,9 @@ class QueueService:
         counter_id: uuid.UUID | None = None,
         idempotency_key: str | None = None,
     ) -> QueueSession:
-        """Transitions a WAITING participant to IN_SERVICE and opens a ServiceSession (concurrency safe)."""
+        """Transitions a WAITING participant to IN_SERVICE and opens a ServiceSession
+        (concurrency safe).
+        """
         queue_session = await self.get_queue_session(session_id, for_update=True)
 
         # 1. Check idempotency key
@@ -200,7 +202,9 @@ class QueueService:
         session_id: uuid.UUID,
         idempotency_key: str | None = None,
     ) -> QueueSession:
-        """Transitions an IN_SERVICE participant to COMPLETED and closes the ServiceSession (concurrency safe)."""
+        """Transitions an IN_SERVICE participant to COMPLETED and closes the ServiceSession
+        (concurrency safe).
+        """
         queue_session = await self.get_queue_session(session_id, for_update=True)
 
         # 1. Check idempotency key

@@ -2,12 +2,13 @@
 
 import asyncio
 import uuid
+
 import httpx
 import pytest
 from sqlalchemy import func, select
 
 from app.db.session import async_session_factory
-from app.domain.enums import QueueSessionStatus, UserRole
+from app.domain.enums import QueueSessionStatus
 from app.domain.models import Location, QueueSession, Service, ServiceSession
 
 
@@ -36,7 +37,9 @@ async def setup_test_service(db_session, admin_auth):
 
 
 class TestQueueConcurrency:
-    """Verifies that pessimistic row locking eliminates state transition races under high concurrency."""
+    """Verifies that pessimistic row locking eliminates state transition races
+    under high concurrency.
+    """
 
     async def test_concurrent_start_service_single_winner(
         self, unauth_client: httpx.AsyncClient, admin_auth, setup_test_service
@@ -148,7 +151,9 @@ class TestQueueConcurrency:
                 headers=admin_hdrs,
             )
 
-        resp1, resp2 = await asyncio.gather(call_complete(), call_complete(), return_exceptions=False)
+        resp1, resp2 = await asyncio.gather(
+            call_complete(), call_complete(), return_exceptions=False
+        )
 
         status_codes = sorted([resp1.status_code, resp2.status_code])
         assert status_codes == [200, 400]

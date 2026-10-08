@@ -102,8 +102,8 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT in ("production", "staging"):
             if not self.AUTH_SECRET_KEY or self.AUTH_SECRET_KEY in insecure_defaults:
                 raise ValueError(
-                    f"Production/staging environment requires a non-default, secure AUTH_SECRET_KEY. "
-                    f"Current value is insecure or default."
+                    "Production/staging environment requires a non-default, "
+                    "secure AUTH_SECRET_KEY. Current value is insecure or default."
                 )
             if len(self.AUTH_SECRET_KEY) < 32:
                 raise ValueError(

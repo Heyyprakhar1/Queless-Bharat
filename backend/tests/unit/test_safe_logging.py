@@ -4,8 +4,13 @@ from app.core.logging import redact_sensitive_data, sanitize_sensitive_text
 
 
 def test_database_password_in_error_text_is_redacted():
-    """Database connection strings with credentials in exception text must have passwords stripped."""
-    raw_error = "Connection failed to postgresql://queless_user:SuperSecretPassword123!@localhost:5432/queless_db"
+    """Database connection strings with credentials in exception text
+    must have passwords stripped.
+    """
+    raw_error = (
+        "Connection failed to "
+        "postgresql://queless_user:SuperSecretPassword123!@localhost:5432/queless_db"
+    )
     sanitized = sanitize_sensitive_text(raw_error)
 
     assert "SuperSecretPassword123!" not in sanitized
@@ -16,7 +21,8 @@ def test_database_password_in_error_text_is_redacted():
 def test_bearer_jwt_tokens_in_error_text_are_redacted():
     """Bearer tokens and JWT strings in exception traces must be redacted."""
     raw_error = (
-        "Auth failed for header Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature"
+        "Auth failed for header "
+        "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature"
     )
     sanitized = sanitize_sensitive_text(raw_error)
 
@@ -26,7 +32,9 @@ def test_bearer_jwt_tokens_in_error_text_are_redacted():
 
 def test_password_parameters_in_error_text_are_redacted():
     """Freeform exception strings containing password assignments must be redacted."""
-    raw_error = "Validation failed for user credentials: password='VerySecretPassword!', role='CITIZEN'"
+    raw_error = (
+        "Validation failed for user credentials: password='VerySecretPassword!', role='CITIZEN'"
+    )
     sanitized = sanitize_sensitive_text(raw_error)
 
     assert "VerySecretPassword!" not in sanitized

@@ -46,18 +46,17 @@ class EstimationService:
         self, service_id: uuid.UUID, now: datetime
     ) -> tuple[int, WaitObservation | None]:
         """Resolves active counters with strict precedence:
-        1. If registered Counter entities exist for this service, the count of Counter(status=ACTIVE)
-           is authoritative. If 0 are active, effective count is 0 (service halted).
-           Stale or conflicting observations MUST NOT override 0 active counters.
+        1. If registered Counter entities exist for this service, the count of
+           Counter(status=ACTIVE) is authoritative. If 0 are active, effective
+           count is 0 (service halted). Stale or conflicting observations MUST NOT
+           override 0 active counters.
         2. If NO counters are registered in the DB table (unmanaged/crowdsourced service),
            fall back to latest observation's active_counters ONLY if the observation exists,
            has active_counters > 0, and is fresh (<= 1800 seconds / 30 minutes).
         """
         # Query total registered counters for the service
         total_counters_stmt = (
-            select(func.count())
-            .select_from(Counter)
-            .where(Counter.service_id == service_id)
+            select(func.count()).select_from(Counter).where(Counter.service_id == service_id)
         )
         total_registered_counters = (await self.session.execute(total_counters_stmt)).scalar() or 0
 
@@ -85,7 +84,8 @@ class EstimationService:
             # Registered counters in DB are authoritative
             return active_counters_count, latest_observation
 
-        # Fallback to crowdsourced observation only when unmanaged AND fresh (<= 1800 seconds / 30 minutes)
+        # Fallback to crowdsourced observation only when unmanaged
+        # AND fresh (<= 1800 seconds / 30 minutes)
         if (
             latest_observation
             and latest_observation.active_counters > 0

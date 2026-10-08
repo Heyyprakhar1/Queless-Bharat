@@ -1,6 +1,7 @@
-"""Tests verifying authoritative counter precedence and freshness constraints in EstimationService."""
+"""Tests verifying authoritative counter precedence and freshness constraints
+in EstimationService.
+"""
 
-import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -71,7 +72,9 @@ class TestCounterObservationPrecedence:
     async def test_zero_active_registered_counters_not_resurrected_by_observation(
         self, db_session, sample_service
     ):
-        """When registered counters are INACTIVE (0 active), observations CANNOT resurrect counters."""
+        """When registered counters are INACTIVE (0 active), observations
+        CANNOT resurrect counters.
+        """
         service = sample_service
         now = datetime.now(UTC)
 
@@ -100,14 +103,18 @@ class TestCounterObservationPrecedence:
         assert eff_counters == 0  # DB says 0 active; queue is halted!
 
         # Estimation status must be unavailable
-        status_resp = await estimation_svc.get_service_queue_status(service.id, persist_estimate=False)
+        status_resp = await estimation_svc.get_service_queue_status(
+            service.id, persist_estimate=False
+        )
         assert status_resp.active_counters == 0
         assert status_resp.estimated_wait.is_available is False
 
     async def test_unmanaged_service_uses_fresh_observation_counters(
         self, db_session, sample_service
     ):
-        """When 0 counters are registered in DB, fresh observation (<= 1800 seconds / 30 minutes) provides active count."""
+        """When 0 counters are registered in DB, fresh observation
+        (<= 1800 seconds / 30 minutes) provides active count.
+        """
         service = sample_service
         now = datetime.now(UTC)
 
@@ -130,7 +137,9 @@ class TestCounterObservationPrecedence:
     async def test_unmanaged_service_rejects_stale_observation_counters(
         self, db_session, sample_service
     ):
-        """When 0 counters are registered in DB, stale observation (> 1800 seconds / 30 minutes) is discarded."""
+        """When 0 counters are registered in DB, stale observation
+        (> 1800 seconds / 30 minutes) is discarded.
+        """
         service = sample_service
         now = datetime.now(UTC)
 

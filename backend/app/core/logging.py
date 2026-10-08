@@ -1,6 +1,7 @@
 """Structured logging configuration and secret redaction."""
 
 import logging
+import re
 import sys
 import time
 import uuid
@@ -11,8 +12,6 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
-
-import re
 
 SENSITIVE_KEYS = {
     "password",
@@ -34,7 +33,9 @@ _SENSITIVE_PATTERNS = [
     ),
     # Bearer tokens and JWTs
     (
-        re.compile(r"Bearer\s+ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*", re.IGNORECASE),
+        re.compile(
+            r"Bearer\s+ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*", re.IGNORECASE
+        ),
         "Bearer [REDACTED_JWT]",
     ),
     (

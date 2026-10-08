@@ -76,7 +76,10 @@ FACILITY_SPECS = [
         "services": [
             {
                 "name": "Driving Licence Renewal",
-                "description": "Permanent driving licence renewal, biometric re-verification, and address endorsement",
+                "description": (
+                    "Permanent driving licence renewal, biometric re-verification, "
+                    "and address endorsement"
+                ),
                 "counters": [
                     {"name": "Counter 1 - Renewal Verification", "status": CounterStatus.ACTIVE},
                     {"name": "Counter 2 - Biometrics & Photo", "status": CounterStatus.ACTIVE},
@@ -102,15 +105,35 @@ FACILITY_SPECS = [
             },
             {
                 "name": "Vehicle Registration & Transfer",
-                "description": "New vehicle registration clearance and ownership transfer NOC window",
+                "description": (
+                    "New vehicle registration clearance and ownership transfer NOC window"
+                ),
                 "counters": [
                     {"name": "Window 1 - Registration Intake", "status": CounterStatus.ACTIVE},
-                    {"name": "Window 2 - NOC & Inspection Clearance", "status": CounterStatus.ACTIVE},
+                    {
+                        "name": "Window 2 - NOC & Inspection Clearance",
+                        "status": CounterStatus.ACTIVE,
+                    },
                 ],
                 "scenario": {
                     "type": "long",
                     "waiting_count": 26,
-                    "durations": [280, 310, 330, 300, 290, 320, 340, 310, 295, 315, 305, 325, 310, 300],
+                    "durations": [
+                        280,
+                        310,
+                        330,
+                        300,
+                        290,
+                        320,
+                        340,
+                        310,
+                        295,
+                        315,
+                        305,
+                        325,
+                        310,
+                        300,
+                    ],
                 },
             },
         ],
@@ -135,12 +158,30 @@ FACILITY_SPECS = [
                 "scenario": {
                     "type": "moderate",
                     "waiting_count": 12,
-                    "durations": [160, 180, 200, 175, 190, 180, 170, 195, 185, 175, 190, 180, 170, 185, 190],
+                    "durations": [
+                        160,
+                        180,
+                        200,
+                        175,
+                        190,
+                        180,
+                        170,
+                        195,
+                        185,
+                        175,
+                        190,
+                        180,
+                        170,
+                        185,
+                        190,
+                    ],
                 },
             },
             {
                 "name": "Radiology & Ultrasound Token",
-                "description": "Diagnostic ultrasonography and digital X-ray investigation scheduling",
+                "description": (
+                    "Diagnostic ultrasonography and digital X-ray investigation scheduling"
+                ),
                 "counters": [
                     {"name": "Window 1 - Imaging Desk", "status": CounterStatus.ACTIVE},
                 ],
@@ -164,10 +205,15 @@ FACILITY_SPECS = [
         "services": [
             {
                 "name": "Property Tax Assessment & Payment",
-                "description": "Annual civic property tax self-assessment clearance and payment receipt window",
+                "description": (
+                    "Annual civic property tax self-assessment clearance and payment receipt window"
+                ),
                 "counters": [
                     {"name": "Counter 1 - Billing Clearance", "status": CounterStatus.ACTIVE},
-                    {"name": "Counter 2 - Digital Payment Collection", "status": CounterStatus.ACTIVE},
+                    {
+                        "name": "Counter 2 - Digital Payment Collection",
+                        "status": CounterStatus.ACTIVE,
+                    },
                 ],
                 "scenario": {
                     "type": "short",
@@ -177,7 +223,9 @@ FACILITY_SPECS = [
             },
             {
                 "name": "Birth & Death Certificate Counter",
-                "description": "Vital statistics official certification and civic record extract window",
+                "description": (
+                    "Vital statistics official certification and civic record extract window"
+                ),
                 "counters": [
                     {"name": "Window 1 - Certification Desk", "status": CounterStatus.MAINTENANCE},
                 ],
@@ -190,7 +238,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- MUMBAI ---
     {
         "city": "Mumbai",
@@ -236,7 +283,23 @@ FACILITY_SPECS = [
                 "scenario": {
                     "type": "long",
                     "waiting_count": 30,
-                    "durations": [180, 200, 190, 210, 195, 205, 190, 185, 200, 195, 210, 190, 200, 195, 205],
+                    "durations": [
+                        180,
+                        200,
+                        190,
+                        210,
+                        195,
+                        205,
+                        190,
+                        185,
+                        200,
+                        195,
+                        210,
+                        190,
+                        200,
+                        195,
+                        205,
+                    ],
                 },
             },
         ],
@@ -265,7 +328,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- BENGALURU ---
     {
         "city": "Bengaluru",
@@ -338,7 +400,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- CHENNAI ---
     {
         "city": "Chennai",
@@ -412,7 +473,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- KOLKATA ---
     {
         "city": "Kolkata",
@@ -458,7 +518,22 @@ FACILITY_SPECS = [
                 "scenario": {
                     "type": "long",
                     "waiting_count": 28,
-                    "durations": [180, 200, 190, 210, 195, 205, 190, 185, 200, 195, 210, 190, 200, 195],
+                    "durations": [
+                        180,
+                        200,
+                        190,
+                        210,
+                        195,
+                        205,
+                        190,
+                        185,
+                        200,
+                        195,
+                        210,
+                        190,
+                        200,
+                        195,
+                    ],
                 },
             },
         ],
@@ -486,7 +561,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- DELHI ---
     {
         "city": "Delhi",
@@ -533,7 +607,24 @@ FACILITY_SPECS = [
                 "scenario": {
                     "type": "long",
                     "waiting_count": 35,
-                    "durations": [160, 180, 170, 190, 175, 185, 170, 165, 180, 175, 190, 170, 180, 175, 185, 170],
+                    "durations": [
+                        160,
+                        180,
+                        170,
+                        190,
+                        175,
+                        185,
+                        170,
+                        165,
+                        180,
+                        175,
+                        190,
+                        170,
+                        180,
+                        175,
+                        185,
+                        170,
+                    ],
                 },
             },
         ],
@@ -549,7 +640,9 @@ FACILITY_SPECS = [
         "services": [
             {
                 "name": "Citizen Services & Property Tax",
-                "description": "Civic grievance reporting, property tax clearance, and mutation services",
+                "description": (
+                    "Civic grievance reporting, property tax clearance, and mutation services"
+                ),
                 "counters": [
                     {"name": "Counter 1", "status": CounterStatus.ACTIVE},
                     {"name": "Counter 2", "status": CounterStatus.ACTIVE},
@@ -562,7 +655,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- LUCKNOW ---
     {
         "city": "Lucknow",
@@ -599,7 +691,9 @@ FACILITY_SPECS = [
         "services": [
             {
                 "name": "Shatabdi OPD Registration",
-                "description": "Outpatient department registration and specialist consultation token",
+                "description": (
+                    "Outpatient department registration and specialist consultation token"
+                ),
                 "counters": [
                     {"name": "Counter 1", "status": CounterStatus.ACTIVE},
                     {"name": "Counter 2", "status": CounterStatus.ACTIVE},
@@ -636,7 +730,6 @@ FACILITY_SPECS = [
             },
         ],
     },
-
     # --- PATNA ---
     {
         "city": "Patna",

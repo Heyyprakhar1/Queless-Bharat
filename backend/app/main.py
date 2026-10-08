@@ -131,18 +131,22 @@ class RequestBodyLimitMiddleware:
         body = json.dumps(
             {"detail": f"Request body exceeds maximum allowed size of {max_size} bytes"}
         ).encode("utf-8")
-        await send({
-            "type": "http.response.start",
-            "status": 413,
-            "headers": [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(body)).encode("latin1")),
-            ],
-        })
-        await send({
-            "type": "http.response.body",
-            "body": body,
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("latin1")),
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": body,
+            }
+        )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -156,7 +160,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-        # Content-Security-Policy: restrict origins, allow Swagger UI & React/Vite development/production
+        # Content-Security-Policy: restrict origins, allow Swagger UI &
+        # React/Vite development/production
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -171,8 +176,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
 
         # X-XSS-Protection rationale: Modern browsers have deprecated the legacy XSS auditor
-        # in favor of Content-Security-Policy (CSP). Setting it to 0 explicitly disables the legacy auditor
-        # to avoid auditor-based vulnerability exploitation, as recommended by OWASP.
+        # in favor of Content-Security-Policy (CSP). Setting it to 0 explicitly disables the
+        # legacy auditor to avoid auditor-based vulnerability exploitation, as recommended by OWASP.
         response.headers["X-XSS-Protection"] = "0"
 
         # HSTS: Strict-Transport-Security ONLY when explicitly enabled or in production with HTTPS
@@ -256,7 +261,9 @@ async def domain_error_handler(request: Request, exc: DomainError) -> JSONRespon
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Safe fail-closed 500 handler preventing database/stack trace disclosure and credential leakage."""
+    """Safe fail-closed 500 handler preventing database/stack trace disclosure
+    and credential leakage.
+    """
     sanitized_error = sanitize_sensitive_text(str(exc))
     logger.error(
         "unhandled_server_error",

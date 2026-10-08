@@ -9,7 +9,9 @@ from app.main import app
 
 @pytest.mark.asyncio
 async def test_oversized_content_length_rejected_with_413():
-    """Requests declaring Content-Length greater than MAX_REQUEST_BODY_BYTES are rejected with 413."""
+    """Requests declaring Content-Length greater than MAX_REQUEST_BODY_BYTES are
+    rejected with 413.
+    """
     settings = get_settings()
     max_size = settings.MAX_REQUEST_BODY_BYTES
 

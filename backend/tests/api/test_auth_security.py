@@ -129,9 +129,7 @@ class TestAuthenticationSecurity:
         assert res_expired.status_code == 401
         assert "expired" in res_expired.json()["detail"].lower()
 
-    async def test_anonymous_registration_strictly_creates_citizen(
-        self, client: httpx.AsyncClient
-    ):
+    async def test_anonymous_registration_strictly_creates_citizen(self, client: httpx.AsyncClient):
         """1. Verifies anonymous registration always assigns CITIZEN role."""
         resp = await client.post(
             "/api/v1/auth/register",
@@ -234,9 +232,7 @@ class TestAuthenticationSecurity:
             "full_name": "Legit Operator",
             "role": "OPERATOR",
         }
-        op_resp = await client.post(
-            "/api/v1/auth/admin/users", json=op_payload, headers=admin_hdrs
-        )
+        op_resp = await client.post("/api/v1/auth/admin/users", json=op_payload, headers=admin_hdrs)
         assert op_resp.status_code == 201
         assert op_resp.json()["role"] == "OPERATOR"
 
@@ -247,9 +243,7 @@ class TestAuthenticationSecurity:
             "full_name": "New Admin",
             "role": "ADMIN",
         }
-        adm_resp = await client.post(
-            "/api/v1/admin/users", json=admin_payload, headers=admin_hdrs
-        )
+        adm_resp = await client.post("/api/v1/admin/users", json=admin_payload, headers=admin_hdrs)
         assert adm_resp.status_code == 201
         assert adm_resp.json()["role"] == "ADMIN"
 

@@ -20,7 +20,7 @@ import asyncio
 import ipaddress
 import time
 from collections import defaultdict
-from typing import Sequence
+from collections.abc import Sequence
 
 from fastapi import HTTPException, Request, status
 
@@ -66,9 +66,7 @@ class SlidingWindowRateLimiter:
     def _get_client_key(self, request: Request) -> str:
         settings = get_settings()
         direct_ip = (
-            request.client.host
-            if request.client and request.client.host
-            else "unknown_client"
+            request.client.host if request.client and request.client.host else "unknown_client"
         )
 
         # Explicit Trusted Proxy Enforcement:
@@ -130,7 +128,10 @@ class SlidingWindowRateLimiter:
                 retry_after = max(1, int(window_seconds - (now - earliest)))
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Rate limit exceeded for {self.scope}. Please retry in {retry_after} seconds.",
+                    detail=(
+                        f"Rate limit exceeded for {self.scope}. "
+                        f"Please retry in {retry_after} seconds."
+                    ),
                     headers={"Retry-After": str(retry_after)},
                 )
             timestamps.append(now)

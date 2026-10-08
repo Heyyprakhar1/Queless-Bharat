@@ -166,9 +166,7 @@ class TestIndiaDemoCatalogAPI:
         assert "Pune Municipal Corporation (PMC Main Building)" in pune_names
 
         # 3. Verify Pune RTO scenarios: Driving Licence Renewal (Moderate Queue)
-        rto_fac = next(
-            f for f in pune_facilities if "MH-12 RTO" in f["name"]
-        )
+        rto_fac = next(f for f in pune_facilities if "MH-12 RTO" in f["name"])
         rto_svcs_resp = await client.get(f"/api/v1/services?location_id={rto_fac['id']}")
         assert rto_svcs_resp.status_code == 200
         rto_svcs = rto_svcs_resp.json()
@@ -194,17 +192,11 @@ class TestIndiaDemoCatalogAPI:
 
         # 4. Verify Sassoon Hospital: Radiology & Ultrasound (Insufficient Data Scenario)
         sassoon_fac = next(f for f in pune_facilities if "Sassoon" in f["name"])
-        sassoon_svcs_resp = await client.get(
-            f"/api/v1/services?location_id={sassoon_fac['id']}"
-        )
+        sassoon_svcs_resp = await client.get(f"/api/v1/services?location_id={sassoon_fac['id']}")
         sassoon_svcs = sassoon_svcs_resp.json()
 
-        radio_svc = next(
-            s for s in sassoon_svcs if "Radiology" in s["name"]
-        )
-        radio_status_resp = await client.get(
-            f"/api/v1/services/{radio_svc['id']}/queue-status"
-        )
+        radio_svc = next(s for s in sassoon_svcs if "Radiology" in s["name"])
+        radio_status_resp = await client.get(f"/api/v1/services/{radio_svc['id']}/queue-status")
         assert radio_status_resp.status_code == 200
         radio_data = radio_status_resp.json()
 

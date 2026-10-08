@@ -54,7 +54,9 @@ async def create_privileged_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_admin: Annotated[User, Depends(get_current_admin)],
 ) -> UserResponse:
-    """Administrator-only workflow for provisioning privileged or scoped accounts (OPERATOR, ADMIN)."""
+    """Administrator-only workflow for provisioning privileged or scoped accounts
+    (OPERATOR, ADMIN).
+    """
     auth_svc = AuthService(db)
     try:
         user = await auth_svc.create_privileged_user(data)

@@ -73,7 +73,9 @@ class TestRateLimiter:
         settings = get_settings()
         monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", False)
 
-        limiter = SlidingWindowRateLimiter(max_requests=2, window_seconds=60, scope="test_spoof_off")
+        limiter = SlidingWindowRateLimiter(
+            max_requests=2, window_seconds=60, scope="test_spoof_off"
+        )
         req1 = make_mock_request("192.168.1.50", headers=[(b"x-forwarded-for", b"203.0.113.1")])
         req2 = make_mock_request("192.168.1.50", headers=[(b"x-forwarded-for", b"203.0.113.2")])
 
@@ -88,13 +90,17 @@ class TestRateLimiter:
         assert exc_info.value.status_code == 429
 
     async def test_forwarded_for_ignored_from_untrusted_proxy_socket(self, monkeypatch):
-        """When TRUST_PROXY_HEADERS is True, but connecting socket is NOT trusted, X-Forwarded-For is ignored."""
+        """When TRUST_PROXY_HEADERS is True, but connecting socket is NOT trusted,
+        X-Forwarded-For is ignored.
+        """
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         settings = get_settings()
         monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         monkeypatch.setattr(settings, "TRUSTED_PROXIES", ["127.0.0.1", "10.0.0.0/8"])
 
-        limiter = SlidingWindowRateLimiter(max_requests=1, window_seconds=60, scope="test_untrusted_socket")
+        limiter = SlidingWindowRateLimiter(
+            max_requests=1, window_seconds=60, scope="test_untrusted_socket"
+        )
         # Direct socket 198.51.100.99 is NOT in TRUSTED_PROXIES
         req_untrusted = make_mock_request(
             "198.51.100.99", headers=[(b"x-forwarded-for", b"1.1.1.1")]
@@ -102,13 +108,17 @@ class TestRateLimiter:
         assert limiter._get_client_key(req_untrusted) == "test_untrusted_socket:198.51.100.99"
 
     async def test_forwarded_for_honored_from_trusted_proxy_socket(self, monkeypatch):
-        """When TRUST_PROXY_HEADERS is True and socket is trusted proxy, client IP is extracted from X-Forwarded-For."""
+        """When TRUST_PROXY_HEADERS is True and socket is trusted proxy, client IP is
+        extracted from X-Forwarded-For.
+        """
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         settings = get_settings()
         monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         monkeypatch.setattr(settings, "TRUSTED_PROXIES", ["127.0.0.1", "10.0.0.0/8"])
 
-        limiter = SlidingWindowRateLimiter(max_requests=1, window_seconds=60, scope="test_trusted_socket")
+        limiter = SlidingWindowRateLimiter(
+            max_requests=1, window_seconds=60, scope="test_trusted_socket"
+        )
         # Direct socket 127.0.0.1 is a trusted proxy
         req_trusted = make_mock_request(
             "127.0.0.1", headers=[(b"x-forwarded-for", b"203.0.113.195, 10.0.0.1")]
@@ -122,7 +132,9 @@ class TestRateLimiter:
         monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         monkeypatch.setattr(settings, "TRUSTED_PROXIES", ["127.0.0.1"])
 
-        limiter = SlidingWindowRateLimiter(max_requests=1, window_seconds=60, scope="test_malformed")
+        limiter = SlidingWindowRateLimiter(
+            max_requests=1, window_seconds=60, scope="test_malformed"
+        )
         req_bad = make_mock_request(
             "127.0.0.1", headers=[(b"x-forwarded-for", b"not-a-valid-ip-address; DROP TABLE;")]
         )
