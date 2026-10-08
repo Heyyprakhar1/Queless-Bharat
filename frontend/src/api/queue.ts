@@ -10,10 +10,29 @@ import { getAuthHeaders } from './auth'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 /**
- * Fetches all registered public service locations.
+ * Fetches distinct cities with registered facilities.
  */
-export async function fetchLocations(): Promise<Location[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/locations`, {
+export async function fetchCities(): Promise<string[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/locations/cities`, {
+    headers: {
+      Accept: 'application/json',
+      ...getAuthHeaders(),
+    },
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to fetch cities: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Fetches registered public service locations, optionally filtered by city.
+ */
+export async function fetchLocations(city?: string): Promise<Location[]> {
+  const url = city
+    ? `${API_BASE_URL}/api/v1/locations?city=${encodeURIComponent(city)}`
+    : `${API_BASE_URL}/api/v1/locations`
+  const response = await fetch(url, {
     headers: {
       Accept: 'application/json',
       ...getAuthHeaders(),

@@ -8,6 +8,8 @@ export interface Location {
   city: string
   state: string
   timezone: string
+  latitude?: number | null
+  longitude?: number | null
   status: string
   created_at: string
   updated_at: string
@@ -72,6 +74,7 @@ export interface QueueStatusResponse {
   people_ahead: number
   active_counters: number
   estimated_wait: WaitEstimate
+  is_simulated?: boolean
 }
 
 export interface UserQueueStatusResponse {
@@ -81,4 +84,5 @@ export interface UserQueueStatusResponse {
   people_ahead: number
   queue_state: QueueStateSummary
   estimated_wait: WaitEstimate
+  is_simulated?: boolean
 }

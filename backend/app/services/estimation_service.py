@@ -167,7 +167,12 @@ class EstimationService:
             self.session.add(persisted_estimate)
             await self.session.commit()
 
-        # 9. Format response payload
+        # 9. Format response payload with demo/simulation indication
+        estimate_result.supporting_signals.setdefault("is_simulated", True)
+        estimate_result.supporting_signals.setdefault(
+            "simulation_notice", "DEMO / SIMULATED DATA — Not live queue measurements"
+        )
+
         estimate_payload = WaitEstimatePayload(
             is_available=estimate_result.is_available,
             lower_minutes=estimate_result.lower_minutes,
@@ -191,6 +196,7 @@ class EstimationService:
             people_ahead=waiting_count,
             active_counters=effective_counters,
             estimated_wait=estimate_payload,
+            is_simulated=True,
         )
 
     async def get_user_queue_status(
@@ -371,6 +377,11 @@ class EstimationService:
         )
         estimate_result = self.estimator.estimate(est_input)
 
+        estimate_result.supporting_signals.setdefault("is_simulated", True)
+        estimate_result.supporting_signals.setdefault(
+            "simulation_notice", "DEMO / SIMULATED DATA — Not live queue measurements"
+        )
+
         estimate_payload = WaitEstimatePayload(
             is_available=estimate_result.is_available,
             lower_minutes=estimate_result.lower_minutes,
@@ -391,4 +402,5 @@ class EstimationService:
             people_ahead=people_ahead,
             queue_state=queue_state,
             estimated_wait=estimate_payload,
+            is_simulated=True,
         )

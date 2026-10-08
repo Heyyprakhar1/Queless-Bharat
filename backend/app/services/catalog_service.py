@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.exceptions import ResourceNotFoundError
@@ -44,9 +44,19 @@ class CatalogService:
             raise ResourceNotFoundError("Location", str(location_id))
         return location
 
-    async def list_locations(self) -> list[Location]:
-        """Lists all registered locations."""
-        result = await self.session.execute(select(Location).order_by(Location.name.asc()))
+    async def list_cities(self) -> list[str]:
+        """Lists distinct cities with registered locations."""
+        result = await self.session.execute(
+            select(Location.city).distinct().order_by(Location.city.asc())
+        )
+        return [row[0] for row in result.all()]
+
+    async def list_locations(self, city: str | None = None) -> list[Location]:
+        """Lists registered locations, optionally filtered by city."""
+        stmt = select(Location).order_by(Location.name.asc())
+        if city:
+            stmt = stmt.where(func.lower(Location.city) == city.strip().lower())
+        result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def create_service(self, data: ServiceCreate) -> Service:

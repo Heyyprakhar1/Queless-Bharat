@@ -147,6 +147,10 @@ class QueueStatusResponse(BaseModel):
     people_ahead: int
     active_counters: int
     estimated_wait: WaitEstimatePayload
+    is_simulated: bool = Field(
+        default=True,
+        description="Indicates whether queue metrics are demo/simulated rather than live facility telemetry",
+    )
 
 
 class UserQueueStatusResponse(BaseModel):
@@ -164,3 +168,7 @@ class UserQueueStatusResponse(BaseModel):
     )
     queue_state: QueueStateSummary
     estimated_wait: WaitEstimatePayload
+    is_simulated: bool = Field(
+        default=True,
+        description="Indicates whether queue metrics are demo/simulated rather than live facility telemetry",
+    )

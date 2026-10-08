@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin
@@ -27,13 +27,23 @@ async def create_location(
     return LocationResponse.model_validate(location)
 
 
+@router.get("/cities", response_model=list[str])
+async def list_cities(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[str]:
+    """List distinct cities with registered locations (Public catalog)."""
+    service = CatalogService(db)
+    return await service.list_cities()
+
+
 @router.get("", response_model=list[LocationResponse])
 async def list_locations(
     db: Annotated[AsyncSession, Depends(get_db)],
+    city: Annotated[str | None, Query(description="Filter locations by city")] = None,
 ) -> list[LocationResponse]:
-    """List all registered locations (Public catalog)."""
+    """List registered locations, optionally filtered by city (Public catalog)."""
     service = CatalogService(db)
-    locations = await service.list_locations()
+    locations = await service.list_locations(city=city)
     return [LocationResponse.model_validate(loc) for loc in locations]
 
 

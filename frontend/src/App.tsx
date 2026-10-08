@@ -14,6 +14,8 @@ import {
   cancelQueueSession,
   checkInQueue,
   completeService,
+  fetchCities,
+  fetchLocations,
   fetchQueueStatus,
   fetchServices,
   fetchUserQueueStatus,
@@ -21,7 +23,12 @@ import {
 } from './api/queue'
 import type { User, UserRole } from './types/auth'
 import type { HealthResponse } from './types/health'
-import type { QueueStatusResponse, Service, UserQueueStatusResponse } from './types/queue'
+import type {
+  Location,
+  QueueStatusResponse,
+  Service,
+  UserQueueStatusResponse,
+} from './types/queue'
 
 export function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
@@ -40,14 +47,20 @@ export function App() {
   const [authLoading, setAuthLoading] = useState<boolean>(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  // Catalog state
-  const [services, setServices] = useState<Service[]>([])
-  const [selectedServiceId, setSelectedServiceId] = useState<string>('')
-  const [queueStatus, setQueueStatus] = useState<QueueStatusResponse | null>(null)
-  const [queueLoading, setQueueLoading] = useState<boolean>(false)
-  const [queueError, setQueueError] = useState<string | null>(null)
+  // M6.1 India Demo Explorer state
+  const [cities, setCities] = useState<string[]>([])
+  const [selectedCity, setSelectedCity] = useState<string>('Pune')
+  const [facilities, setFacilities] = useState<Location[]>([])
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string>('')
+  const [facilityServices, setFacilityServices] = useState<Service[]>([])
+  const [selectedDemoServiceId, setSelectedDemoServiceId] = useState<string>('')
+  const [demoQueueStatus, setDemoQueueStatus] = useState<QueueStatusResponse | null>(null)
+  const [demoQueueLoading, setDemoQueueLoading] = useState<boolean>(false)
+  const [demoQueueError, setDemoQueueError] = useState<string | null>(null)
 
   // Citizen interactive flow state
+  const [services, setServices] = useState<Service[]>([])
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('')
   const [citizenName, setCitizenName] = useState<string>('')
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     return localStorage.getItem('queless_active_session_id') || ''
@@ -95,7 +108,8 @@ export function App() {
     }
   }
 
-  const loadCatalog = async () => {
+  // Load all services for backward-compatible citizen dropdown
+  const loadGlobalCatalog = async () => {
     try {
       const svcs = await fetchServices()
       setServices(svcs)
@@ -107,21 +121,117 @@ export function App() {
     }
   }
 
-  const loadQueueStatus = async (serviceId: string) => {
+  // Load cities on mount
+  useEffect(() => {
+    async function initCities() {
+      try {
+        const cityList = await fetchCities()
+        setCities(cityList)
+        if (cityList.length > 0) {
+          // Default to Pune as showcase city if available, else first city
+          if (cityList.includes('Pune')) {
+            setSelectedCity('Pune')
+          } else {
+            setSelectedCity(cityList[0])
+          }
+        }
+      } catch {
+        // Fallback default cities if API not ready
+        setCities(['Pune', 'Mumbai', 'Bengaluru', 'Chennai', 'Kolkata', 'Delhi', 'Lucknow', 'Patna'])
+      }
+    }
+    initCities()
+    checkHealth()
+    loadGlobalCatalog()
+    const interval = setInterval(checkHealth, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Load facilities when selected city changes
+  useEffect(() => {
+    if (!selectedCity) return
+    let isCancelled = false
+    async function loadFacilitiesForCity() {
+      try {
+        const locs = await fetchLocations(selectedCity)
+        if (!isCancelled) {
+          setFacilities(locs)
+          if (locs.length > 0) {
+            setSelectedFacilityId(locs[0].id)
+          } else {
+            setSelectedFacilityId('')
+            setFacilityServices([])
+            setSelectedDemoServiceId('')
+            setDemoQueueStatus(null)
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setDemoQueueError(err instanceof Error ? err.message : 'Failed to load facilities')
+        }
+      }
+    }
+    loadFacilitiesForCity()
+    return () => {
+      isCancelled = true
+    }
+  }, [selectedCity])
+
+  // Load services when selected facility changes
+  useEffect(() => {
+    if (!selectedFacilityId) return
+    let isCancelled = false
+    async function loadServicesForFacility() {
+      try {
+        const svcs = await fetchServices(selectedFacilityId)
+        if (!isCancelled) {
+          setFacilityServices(svcs)
+          if (svcs.length > 0) {
+            setSelectedDemoServiceId(svcs[0].id)
+          } else {
+            setSelectedDemoServiceId('')
+            setDemoQueueStatus(null)
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setDemoQueueError(err instanceof Error ? err.message : 'Failed to load services')
+        }
+      }
+    }
+    loadServicesForFacility()
+    return () => {
+      isCancelled = true
+    }
+  }, [selectedFacilityId])
+
+  // Load queue status when selected demo service changes
+  const loadDemoQueueStatus = async (serviceId: string) => {
     if (!serviceId) return
-    setQueueLoading(true)
-    setQueueError(null)
+    setDemoQueueLoading(true)
+    setDemoQueueError(null)
     try {
       const status = await fetchQueueStatus(serviceId)
-      setQueueStatus(status)
+      setDemoQueueStatus(status)
     } catch (err) {
-      setQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
-      setQueueStatus(null)
+      setDemoQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
+      setDemoQueueStatus(null)
     } finally {
-      setQueueLoading(false)
+      setDemoQueueLoading(false)
     }
   }
 
+  useEffect(() => {
+    if (selectedDemoServiceId) {
+      loadDemoQueueStatus(selectedDemoServiceId)
+      const queueInterval = setInterval(() => {
+        loadDemoQueueStatus(selectedDemoServiceId)
+      }, 15000)
+      return () => clearInterval(queueInterval)
+    }
+  }, [selectedDemoServiceId])
+
+  // User Ticket Status Poll
   const loadUserStatus = async (sessionId: string) => {
     if (!sessionId) return
     try {
@@ -132,6 +242,16 @@ export function App() {
       setCitizenError(err instanceof Error ? err.message : 'Failed to fetch ticket status')
     }
   }
+
+  useEffect(() => {
+    if (activeSessionId) {
+      loadUserStatus(activeSessionId)
+      const ticketInterval = setInterval(() => {
+        loadUserStatus(activeSessionId)
+      }, 5000)
+      return () => clearInterval(ticketInterval)
+    }
+  }, [activeSessionId])
 
   // Auth handlers
   const handleLoginSubmit = async (e?: React.FormEvent) => {
@@ -194,21 +314,24 @@ export function App() {
 
   // Handle Join Queue
   const handleJoinQueue = async () => {
-    if (!selectedServiceId) return
+    const targetServiceId = selectedServiceId || selectedDemoServiceId
+    if (!targetServiceId) return
     setCitizenLoading(true)
     setCitizenError(null)
     setOperatorMessage(null)
     try {
       const idempotencyKey = `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const session = await checkInQueue(
-        selectedServiceId,
+        targetServiceId,
         citizenName.trim() || undefined,
         idempotencyKey
       )
       setActiveSessionId(session.id)
       localStorage.setItem('queless_active_session_id', session.id)
       await loadUserStatus(session.id)
-      await loadQueueStatus(selectedServiceId)
+      if (selectedDemoServiceId) {
+        await loadDemoQueueStatus(selectedDemoServiceId)
+      }
     } catch (err) {
       setCitizenError(err instanceof Error ? err.message : 'Failed to join queue')
     } finally {
@@ -223,8 +346,8 @@ export function App() {
     try {
       await cancelQueueSession(activeSessionId, 'Citizen cancelled via web portal')
       await loadUserStatus(activeSessionId)
-      if (selectedServiceId) {
-        await loadQueueStatus(selectedServiceId)
+      if (selectedDemoServiceId) {
+        await loadDemoQueueStatus(selectedDemoServiceId)
       }
     } catch (err) {
       setCitizenError(err instanceof Error ? err.message : 'Failed to cancel session')
@@ -233,7 +356,7 @@ export function App() {
     }
   }
 
-  // Handle Clear / Dismiss Finished Ticket
+  // Dismiss finished ticket
   const handleDismissTicket = () => {
     setActiveSessionId('')
     setUserStatus(null)
@@ -241,7 +364,7 @@ export function App() {
     setOperatorMessage(null)
   }
 
-  // Operator Desk Actions
+  // Operator actions
   const handleOperatorStart = async () => {
     if (!activeSessionId) return
     setCitizenLoading(true)
@@ -252,8 +375,8 @@ export function App() {
       setOperatorMessage('Participant moved into service at counter.')
       setOperatorIsError(false)
       await loadUserStatus(activeSessionId)
-      if (selectedServiceId) {
-        await loadQueueStatus(selectedServiceId)
+      if (selectedDemoServiceId) {
+        await loadDemoQueueStatus(selectedDemoServiceId)
       }
     } catch (err) {
       setOperatorIsError(true)
@@ -273,8 +396,8 @@ export function App() {
       setOperatorMessage('Service marked completed! Observation recorded for wait estimator.')
       setOperatorIsError(false)
       await loadUserStatus(activeSessionId)
-      if (selectedServiceId) {
-        await loadQueueStatus(selectedServiceId)
+      if (selectedDemoServiceId) {
+        await loadDemoQueueStatus(selectedDemoServiceId)
       }
     } catch (err) {
       setOperatorIsError(true)
@@ -284,58 +407,47 @@ export function App() {
     }
   }
 
-  // Initial load and health polling (ADR-0005: 30s interval)
-  useEffect(() => {
-    checkHealth()
-    loadCatalog()
-    const interval = setInterval(checkHealth, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Poll selected service queue status (15s interval)
-  useEffect(() => {
-    if (selectedServiceId) {
-      loadQueueStatus(selectedServiceId)
-      const queueInterval = setInterval(() => {
-        loadQueueStatus(selectedServiceId)
-      }, 15000)
-      return () => clearInterval(queueInterval)
-    }
-  }, [selectedServiceId])
-
-  // Poll active user ticket status (5s interval for live responsiveness)
-  useEffect(() => {
-    if (activeSessionId) {
-      loadUserStatus(activeSessionId)
-      const ticketInterval = setInterval(() => {
-        loadUserStatus(activeSessionId)
-      }, 5000)
-      return () => clearInterval(ticketInterval)
-    }
-  }, [activeSessionId])
-
   const isHealthy = health?.status === 'ok' && health?.database === 'connected'
   const isTerminalTicket =
     userStatus?.session.status === 'COMPLETED' || userStatus?.session.status === 'CANCELLED'
-
   const isOperatorOrAdmin = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN'
+
+  const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
+  const selectedDemoService = facilityServices.find((s) => s.id === selectedDemoServiceId)
+
+  // Initial 8 cities list for pill bar
+  const displayCities = [
+    'Pune',
+    'Mumbai',
+    'Bengaluru',
+    'Chennai',
+    'Kolkata',
+    'Delhi',
+    'Lucknow',
+    'Patna',
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       {/* Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold text-xl shadow-xs">
               Q
             </div>
             <div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">
-                QueueLess Bharat
-              </span>
-              <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Milestone 4 Auth &amp; RBAC
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-xl font-black tracking-tight text-slate-900">
+                  QueueLess Bharat
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  M6.1 India Demo
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Deterministic Waiting for Indian Civic Services
+              </p>
             </div>
           </div>
 
@@ -418,24 +530,342 @@ export function App() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-5xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-6xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
         {/* Hero Section */}
-        <div className="text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
-            Predictable Waiting for Public Services
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+            Predictable Waiting for Public Services Across India
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto">
             <em>&ldquo;Making waiting more predictable, not pretending queues don&apos;t exist.&rdquo;</em>
           </p>
+
+          {/* Simulation Disclaimer Alert Banner */}
+          <div
+            id="simulation-notice-banner"
+            className="mt-4 p-3.5 max-w-3xl mx-auto rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-center space-x-2 text-center"
+          >
+            <span className="font-extrabold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] tracking-wider uppercase">
+              SIMULATED DEMO DATA
+            </span>
+            <span>
+              All queue sizes, active counters, and throughput sessions shown are <strong>DEMO / SIMULATED DATA</strong> for mathematical algorithmic evaluation. Not live facility telemetry.
+            </span>
+          </div>
         </div>
 
-        {/* SECTION 1: CITIZEN ACTIVE TICKET OR JOIN FORM */}
+        {/* SECTION 1: M6.1 INDIA CIVIC QUEUE EXPLORER (CITY -> FACILITY -> SERVICE -> ESTIMATE) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-xl font-black text-slate-900">
+                  India Civic Queue Explorer
+                </h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  City &rarr; Facility &rarr; Service Flow
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Select an Indian city, public institution, and counter service to inspect deterministic wait projections.
+              </p>
+            </div>
+
+            {/* Simulated Data Badge */}
+            <div className="flex items-center space-x-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-amber-900 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>DEMO / SIMULATED DATA</span>
+            </div>
+          </div>
+
+          {/* City Quick Pills Bar */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+              Select City (8 Major Metros)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {displayCities.map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => setSelectedCity(city)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                    selectedCity === city
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>{city}</span>
+                  {city === 'Pune' && (
+                    <span
+                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                        selectedCity === 'Pune'
+                          ? 'bg-indigo-800 text-amber-300'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      Showcase
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cascading Selectors: City, Facility, Service */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div>
+              <label htmlFor="city-select" className="block text-xs font-bold text-slate-700 mb-1">
+                1. City
+              </label>
+              <select
+                id="city-select"
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {cities.map((c) => (
+                  <option key={c} value={c}>
+                    {c} {c === 'Pune' ? '(Showcase City)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="facility-select" className="block text-xs font-bold text-slate-700 mb-1">
+                2. Facility / Institution
+              </label>
+              <select
+                id="facility-select"
+                value={selectedFacilityId}
+                onChange={(e) => setSelectedFacilityId(e.target.value)}
+                disabled={facilities.length === 0}
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {facilities.length === 0 ? (
+                  <option value="">No facilities found</option>
+                ) : (
+                  facilities.map((fac) => (
+                    <option key={fac.id} value={fac.id}>
+                      {fac.name} [{fac.category.toUpperCase()}]
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="service-select" className="block text-xs font-bold text-slate-700 mb-1">
+                3. Civic Service Window
+              </label>
+              <select
+                id="service-select"
+                value={selectedDemoServiceId}
+                onChange={(e) => setSelectedDemoServiceId(e.target.value)}
+                disabled={facilityServices.length === 0}
+                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {facilityServices.length === 0 ? (
+                  <option value="">No services registered</option>
+                ) : (
+                  facilityServices.map((svc) => (
+                    <option key={svc.id} value={svc.id}>
+                      {svc.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          {/* Facility Location Details Banner */}
+          {selectedFacility && (
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <span className="font-bold text-slate-800">{selectedFacility.name}</span>
+                <span className="mx-2 text-slate-300">|</span>
+                <span>{selectedFacility.address}</span>
+              </div>
+              <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-500">
+                <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 uppercase font-sans font-bold">
+                  {selectedFacility.category}
+                </span>
+                {selectedFacility.latitude && selectedFacility.longitude && (
+                  <span>
+                    GPS: {selectedFacility.latitude.toFixed(4)}°N, {selectedFacility.longitude.toFixed(4)}°E
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Queue Status & Wait Projection Display */}
+          {demoQueueLoading ? (
+            <div className="p-8 text-center text-sm text-slate-500">
+              Loading deterministic wait estimate...
+            </div>
+          ) : demoQueueStatus ? (
+            <div className="space-y-6">
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    People Ahead in Line
+                  </span>
+                  <div id="demo-people-ahead" className="text-2xl font-black text-indigo-600">
+                    {demoQueueStatus.people_ahead}
+                  </div>
+                  <span className="text-[11px] text-slate-500">waiting tokens</span>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Active Counters
+                  </span>
+                  <div id="demo-active-counters" className="text-2xl font-black text-emerald-600">
+                    {demoQueueStatus.active_counters}
+                  </div>
+                  <span className="text-[11px] text-slate-500">open service windows</span>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Currently in Service
+                  </span>
+                  <div id="demo-in-service" className="text-2xl font-black text-amber-600">
+                    {demoQueueStatus.queue_state.in_service_count}
+                  </div>
+                  <span className="text-[11px] text-slate-500">participants being served</span>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Data Mode
+                  </span>
+                  <div className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-1 rounded inline-block mt-1">
+                    SIMULATED
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1">Mathematical benchmark</span>
+                </div>
+              </div>
+
+              {/* Deterministic Wait Projection Card */}
+              <div
+                id="demo-wait-projection"
+                className="border border-slate-200 rounded-2xl p-6 bg-gradient-to-r from-slate-50 via-white to-indigo-50/30 space-y-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-bold text-slate-900">
+                      Deterministic Wait Projection (ADR-0003)
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                      {demoQueueStatus.estimated_wait.model_version}
+                    </span>
+                  </div>
+
+                  {demoQueueStatus.estimated_wait.confidence && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-slate-500">Confidence Rating:</span>
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded ${
+                          demoQueueStatus.estimated_wait.confidence === 'HIGH'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : demoQueueStatus.estimated_wait.confidence === 'MEDIUM'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : 'bg-rose-100 text-rose-800 border border-rose-300'
+                        }`}
+                      >
+                        {demoQueueStatus.estimated_wait.confidence}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {demoQueueStatus.estimated_wait.is_available ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      <div className="text-3xl sm:text-4xl font-black text-slate-900">
+                        {demoQueueStatus.estimated_wait.lower_minutes}&ndash;
+                        {demoQueueStatus.estimated_wait.upper_minutes}{' '}
+                        <span className="text-base sm:text-lg font-normal text-slate-600">minutes</span>
+                      </div>
+                      {demoQueueStatus.estimated_wait.expected_minutes !== null && (
+                        <div className="text-sm font-semibold text-slate-600">
+                          (expected ~{demoQueueStatus.estimated_wait.expected_minutes} mins)
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-200/60">
+                      <span>
+                        <strong>Sample Baseline:</strong> {demoQueueStatus.estimated_wait.sample_size} completed throughput sessions
+                      </span>
+                      {demoQueueStatus.estimated_wait.freshness_seconds !== null &&
+                        demoQueueStatus.estimated_wait.freshness_seconds !== undefined && (
+                          <span>
+                            <strong>Signal Freshness:</strong>{' '}
+                            {demoQueueStatus.estimated_wait.freshness_seconds < 60
+                              ? 'Just now (< 1m)'
+                              : `${Math.round(demoQueueStatus.estimated_wait.freshness_seconds / 60)}m ago`}
+                          </span>
+                        )}
+                      {demoQueueStatus.estimated_wait.supporting_signals?.service_rate_per_hour !== undefined && (
+                        <span>
+                          <strong>Service Rate:</strong> ~{String(demoQueueStatus.estimated_wait.supporting_signals.service_rate_per_hour)}/hr
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div id="demo-unavailable-msg" className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm space-y-2">
+                    <div className="font-bold flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <span>Estimate Unavailable</span>
+                    </div>
+                    <p className="text-xs text-amber-800">
+                      {demoQueueStatus.estimated_wait.reason ||
+                        'Insufficient empirical sample data to derive a confident wait projection.'}
+                    </p>
+                    <p className="text-[11px] text-amber-700">
+                      QueueLess Bharat strictly adheres to ADR-0003: it never fabricates false wait estimates or reports false 0-minute wait times when operational data is insufficient.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action to test this service in the Citizen Token Desk */}
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-500">
+                  Ready to test queue session lifecycle for this service?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedServiceId(selectedDemoServiceId)
+                    window.scrollTo({ top: 800, behavior: 'smooth' })
+                  }}
+                  className="px-4 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition cursor-pointer border border-indigo-200"
+                >
+                  Issue Token for &ldquo;{selectedDemoService?.name}&rdquo; &darr;
+                </button>
+              </div>
+            </div>
+          ) : demoQueueError ? (
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm">
+              <strong>Error loading queue scenario:</strong> {demoQueueError}
+            </div>
+          ) : null}
+        </div>
+
+        {/* SECTION 2: CITIZEN DIGITAL TOKEN DESK (LIFECYCLE & OPERATOR CONTROLS) */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Citizen Digital Token Desk</h2>
               <p className="text-xs sm:text-sm text-slate-500">
-                Join an active public queue and track your live position &amp; wait time.
+                Join an active civic queue and track your position, token, &amp; wait time.
               </p>
             </div>
             {activeSessionId && (
@@ -509,7 +939,7 @@ export function App() {
                 <button
                   id="btn-join-queue"
                   onClick={handleJoinQueue}
-                  disabled={citizenLoading || services.length === 0}
+                  disabled={citizenLoading || (services.length === 0 && !selectedDemoServiceId)}
                   className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
                 >
                   {citizenLoading ? 'Issuing Token...' : 'Join Queue / Issue Token'}
@@ -650,7 +1080,7 @@ export function App() {
                 </div>
               </div>
 
-              {/* OPERATOR DESK SIMULATOR (RBAC ENFORCED) */}
+              {/* OPERATOR DESK (RBAC ENFORCED) */}
               <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
                   <div className="flex items-center space-x-2">
@@ -722,171 +1152,6 @@ export function App() {
           )}
         </div>
 
-        {/* SECTION 2: QUEUE INTELLIGENCE MONITOR (AGGREGATE SERVICE MONITOR) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Queue Intelligence Monitor</h2>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Facility-wide queue state and pure mathematical wait estimation (ADR-0003).
-              </p>
-            </div>
-
-            {services.length > 0 && (
-              <div className="flex items-center space-x-3">
-                <label htmlFor="service-select" className="text-xs font-medium text-slate-500">
-                  Service:
-                </label>
-                <select
-                  id="service-select"
-                  value={selectedServiceId}
-                  onChange={(e) => setSelectedServiceId(e.target.value)}
-                  className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {services.map((svc) => (
-                    <option key={svc.id} value={svc.id}>
-                      {svc.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => loadQueueStatus(selectedServiceId)}
-                  disabled={queueLoading}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
-                >
-                  {queueLoading ? '...' : 'Refresh'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {services.length === 0 ? (
-            <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-600 text-sm">
-              <p className="font-medium text-slate-800 mb-1">No Public Services Registered Yet</p>
-              <p className="text-xs text-slate-500">
-                Use the REST API (<code>POST /api/v1/locations</code> &amp; <code>POST /api/v1/services</code>) to register facilities.
-              </p>
-            </div>
-          ) : queueStatus ? (
-            <div className="space-y-6">
-              {/* Queue Metrics Overview */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">
-                    Service
-                  </span>
-                  <div className="font-bold text-slate-900 truncate">
-                    {queueStatus.service.name}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">
-                    Waiting in Line
-                  </span>
-                  <div className="text-2xl font-black text-indigo-600">
-                    {queueStatus.queue_state.waiting_count}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">
-                    Active Counters
-                  </span>
-                  <div className="text-2xl font-black text-emerald-600">
-                    {queueStatus.active_counters}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">
-                    Currently In Service
-                  </span>
-                  <div className="text-2xl font-black text-amber-600">
-                    {queueStatus.queue_state.in_service_count}
-                  </div>
-                </div>
-              </div>
-
-              {/* Wait Estimate Display */}
-              <div className="border border-slate-200 rounded-xl p-5 bg-gradient-to-r from-slate-50 to-indigo-50/30">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-slate-900">Deterministic Wait Projection</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                      {queueStatus.estimated_wait.model_version}
-                    </span>
-                  </div>
-
-                  {queueStatus.estimated_wait.confidence && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-slate-500">Confidence:</span>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded ${
-                          queueStatus.estimated_wait.confidence === 'HIGH'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : queueStatus.estimated_wait.confidence === 'MEDIUM'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                              : 'bg-rose-100 text-rose-800 border border-rose-300'
-                        }`}
-                      >
-                        {queueStatus.estimated_wait.confidence}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {queueStatus.estimated_wait.is_available ? (
-                  <div className="space-y-3">
-                    <div className="flex items-baseline space-x-3">
-                      <span className="text-3xl font-black text-slate-900">
-                        {queueStatus.estimated_wait.lower_minutes}&ndash;{queueStatus.estimated_wait.upper_minutes}
-                      </span>
-                      <span className="text-base font-semibold text-slate-600">minutes</span>
-                      {queueStatus.estimated_wait.expected_minutes !== null && (
-                        <span className="text-xs text-slate-500">
-                          (expected ~{queueStatus.estimated_wait.expected_minutes} mins)
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1 border-t border-slate-200/60">
-                      <span>
-                        <strong>Sample Size:</strong> {queueStatus.estimated_wait.sample_size} completed sessions
-                      </span>
-                      {queueStatus.estimated_wait.freshness_seconds !== null &&
-                        queueStatus.estimated_wait.freshness_seconds !== undefined && (
-                          <span>
-                            <strong>Signal Freshness:</strong>{' '}
-                            {queueStatus.estimated_wait.freshness_seconds < 60
-                              ? 'Just now (< 1m)'
-                              : `${Math.round(queueStatus.estimated_wait.freshness_seconds / 60)}m ago`}
-                          </span>
-                        )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                    <div className="font-bold flex items-center space-x-2 mb-1">
-                      <span>Estimate Unavailable</span>
-                    </div>
-                    <p className="text-xs text-amber-700">
-                      {queueStatus.estimated_wait.reason || 'Insufficient data to compute a trustworthy wait projection.'}
-                    </p>
-                    <p className="text-[11px] text-amber-600 mt-2">
-                      QueueLess Bharat never presents fabricated estimates or false 0-minute predictions when empirical data is unavailable.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : queueError ? (
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm">
-              <strong>Error loading queue:</strong> {queueError}
-            </div>
-          ) : null}
-        </div>
-
         {/* SECTION 3: BACKEND HEALTH & READINESS PANEL */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -954,8 +1219,7 @@ export function App() {
 
           {healthError && (
             <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm mb-4">
-              <strong>Connection Error:</strong> {healthError}. Ensure backend is running at{' '}
-              <code>http://localhost:8001</code>.
+              <strong>Connection Error:</strong> {healthError}. Ensure backend is running.
             </div>
           )}
 
@@ -1175,8 +1439,11 @@ export function App() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6">
-        <div className="max-w-5xl mx-auto px-6 text-center text-xs text-slate-400">
-          QueueLess Bharat &mdash; Milestone 4 Authentication &amp; RBAC Authorization
+        <div className="max-w-6xl mx-auto px-6 text-center text-xs text-slate-400 space-y-1">
+          <div>QueueLess Bharat &mdash; M6.1 India Demo Coverage</div>
+          <div className="text-[11px] text-slate-400">
+            Showcase Cities: Pune, Mumbai, Bengaluru, Chennai, Kolkata, Delhi, Lucknow, Patna &bull; Pure Deterministic Queue Engine
+          </div>
         </div>
       </footer>
     </div>
