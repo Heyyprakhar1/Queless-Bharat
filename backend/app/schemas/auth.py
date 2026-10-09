@@ -27,6 +27,21 @@ class CitizenAccessRequest(BaseModel):
     email: EmailStr
 
 
+class GoogleAuthRequest(BaseModel):
+    """Payload for citizen Sign in with Google verification."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id_token: str = Field(..., min_length=1, description="Google OpenID Connect ID token")
+
+
+class GoogleAuthConfigResponse(BaseModel):
+    """Public configuration state for Google authentication."""
+
+    enabled: bool
+    client_id: str | None = None
+
+
 # Alias for backward compatibility
 UserRegisterRequest = CitizenRegisterRequest
 

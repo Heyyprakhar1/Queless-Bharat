@@ -73,21 +73,21 @@ async function setupIsolatedService(request: any, name: string) {
   return { serviceId: svc.id, serviceName: svc.name, counterId: cnt.id, opEmail, opPass }
 }
 
-// Low-friction citizen onboarding helper
+// Helper to login as citizen via staff password login for test speed
 async function loginAsCitizenHelper(
   page: any,
   name = 'Citizen Amit Sharma',
   email = 'citizen@queless.gov.in'
 ) {
-  await page.click('#btn-open-citizen-access')
-  await page.fill('#input-citizen-name', name)
-  await page.fill('#input-citizen-email', email)
-  await page.click('#btn-submit-citizen-access')
+  await page.click('#btn-open-auth')
+  await page.fill('#input-login-email', email)
+  await page.fill('#input-login-password', 'CitizenPass123!')
+  await page.click('#btn-submit-login')
   await expect(page.locator('#auth-user-badge')).toContainText(name)
   await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
 }
 
-test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
+test.describe('QueueLess Bharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())
@@ -116,24 +116,63 @@ test.describe('QueueLess Bharat — Milestone 4 Auth & RBAC Suite', () => {
     expect(token).toBeTruthy()
   })
 
-  test('Scenario 1b: Low-friction Citizen Access provides unprivileged token without password', async ({
+  test('Scenario 1b: Google Citizen Sign-in provides verified token and retires legacy bypass', async ({
     page,
+    request,
   }) => {
     await page.goto('/')
     await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
 
-    // Open citizen access modal
-    await page.click('#btn-open-citizen-access')
-    await page.fill('#input-citizen-name', 'Rohan Mehra')
-    await page.fill('#input-citizen-email', 'rohan.mehra@example.com')
-    await page.click('#btn-submit-citizen-access')
+    // 1. Verify signed-out Token Desk state
+    await expect(page.locator('#token-desk-signed-out')).toBeVisible()
+    await expect(page.getByText('Verified Citizen Access Required')).toBeVisible()
+    await expect(page.locator('#btn-desk-signin')).toBeVisible()
 
-    // Verify citizen identity and role
-    await expect(page.locator('#auth-user-badge')).toContainText('Rohan Mehra')
+    // 2. Open citizen access modal
+    await page.click('#btn-open-citizen-access')
+    await expect(page.getByText('Verified Citizen Entry')).toBeVisible()
+    await expect(page.locator('#btn-google-signin-fallback')).toBeVisible()
+
+    // 3. Mock Google OAuth endpoint and trigger simulated Google sign-in
+    await page.route('**/api/v1/auth/google', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'mock-google-citizen-access-token',
+          token_type: 'bearer',
+          user: {
+            id: '11111111-1111-1111-1111-111111111111',
+            email: 'google.citizen@example.com',
+            full_name: 'Google Citizen Verified',
+            role: 'CITIZEN',
+            is_active: true,
+            assigned_service_id: null,
+            created_at: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.evaluate(async () => {
+      if (window.__queless_simulate_google_auth) {
+        await window.__queless_simulate_google_auth('mock-google-id-token')
+      }
+    })
+
+    // 4. Verify citizen identity and role in UI
+    await expect(page.locator('#auth-user-badge')).toContainText('Google Citizen Verified')
     await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
+    await expect(page.locator('#desk-verified-identity')).toContainText('Google Citizen Verified')
 
     const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
-    expect(token).toBeTruthy()
+    expect(token).toBe('mock-google-citizen-access-token')
+
+    // 5. Verify legacy citizen-access endpoint is permanently retired (HTTP 410)
+    const retiredResp = await request.post(`${BACKEND_URL}/api/v1/auth/citizen-access`, {
+      data: { full_name: 'Bypass Attempt', email: 'bypass@example.com' },
+    })
+    expect(retiredResp.status()).toBe(410)
   })
 
   test('Scenario 2: Invalid login credentials display browser-visible error', async ({

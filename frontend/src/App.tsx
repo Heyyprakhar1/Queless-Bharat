@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import type React from 'react'
 import {
-  citizenAccess,
   clearAuthSession,
+  fetchGoogleAuthConfig,
   getAuthToken,
   getMe,
   getStoredUser,
+  googleLogin,
   login,
   logout,
   register,
@@ -58,6 +59,9 @@ export function App() {
   const [authFullName, setAuthFullName] = useState<string>('')
   const [authLoading, setAuthLoading] = useState<boolean>(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [googleClientId, setGoogleClientId] = useState<string | null>(
+    () => import.meta.env.VITE_GOOGLE_CLIENT_ID || null
+  )
 
   // Citizen Input State (defaults to current user if logged in)
   const [citizenName, setCitizenName] = useState<string>(() => getStoredUser()?.full_name || '')
@@ -162,6 +166,9 @@ export function App() {
     initCities()
     checkHealth()
     loadGlobalCatalog()
+    fetchGoogleAuthConfig().then((cfg) => {
+      if (cfg.client_id) setGoogleClientId(cfg.client_id)
+    })
     const interval = setInterval(checkHealth, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -346,25 +353,18 @@ export function App() {
     }
   }
 
-  // Low-Friction Citizen Access (Full name + email, no password)
-  const handleCitizenAccessSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    const nameToUse = citizenName.trim() || 'Citizen Participant'
-    const emailToUse = citizenEmail.trim()
-    if (!emailToUse) {
-      setAuthError('Email address is required for citizen access.')
-      return
-    }
+  // Google Citizen Sign-In
+  const handleGoogleSignIn = async (idToken: string) => {
     setAuthLoading(true)
     setAuthError(null)
     try {
-      const resp = await citizenAccess(nameToUse, emailToUse)
+      const resp = await googleLogin(idToken)
       setCurrentUser(resp.user)
       setShowAuthModal(false)
-      setCitizenName(resp.user.full_name || nameToUse)
+      setCitizenName(resp.user.full_name)
       setCitizenEmail(resp.user.email)
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Citizen access failed')
+      setAuthError(err instanceof Error ? err.message : 'Google sign-in failed')
     } finally {
       setAuthLoading(false)
     }
@@ -413,20 +413,19 @@ export function App() {
     setSessionNotice(null)
 
     try {
-      // Ensure citizen session exists (low-friction auto-identification if not already authenticated)
-      if (!getAuthToken()) {
-        const nameToUse = citizenName.trim() || 'Citizen Participant'
-        const emailToUse = citizenEmail.trim() || `citizen.${Date.now()}@queless.gov.in`
-        const authResp = await citizenAccess(nameToUse, emailToUse)
-        setCurrentUser(authResp.user)
-        setCitizenName(authResp.user.full_name || nameToUse)
-        setCitizenEmail(authResp.user.email)
+      // Require authenticated citizen session (Google OpenID Connect)
+      if (!currentUser || !getAuthToken()) {
+        setShowAuthModal(true)
+        setAuthTab('citizen')
+        setCitizenError('Please sign in with Google to issue your personal digital queue token.')
+        return
       }
 
       const idempotencyKey = `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const participantName = currentUser.full_name || citizenName.trim() || undefined
       const session = await checkInQueue(
         targetServiceId,
-        citizenName.trim() || undefined,
+        participantName,
         idempotencyKey
       )
       setActiveSessionId(session.id)
@@ -640,6 +639,11 @@ export function App() {
             {/* SECTION 2: CITIZEN DIGITAL TOKEN DESK (LIFECYCLE, 404 RECOVERY & OPERATOR ACTIONS) */}
             <CitizenTokenDesk
               currentUser={currentUser}
+              onOpenSignIn={() => {
+                setAuthTab('citizen')
+                setShowAuthModal(true)
+                setAuthError(null)
+              }}
               services={services}
               selectedServiceId={selectedServiceId}
               onSelectService={setSelectedServiceId}
@@ -694,11 +698,8 @@ export function App() {
           setAuthTab(tab)
           setAuthError(null)
         }}
-        citizenName={citizenName}
-        setCitizenName={setCitizenName}
-        citizenEmail={citizenEmail}
-        setCitizenEmail={setCitizenEmail}
-        onSubmitCitizenAccess={handleCitizenAccessSubmit}
+        googleClientId={googleClientId}
+        onGoogleSignIn={handleGoogleSignIn}
         authEmail={authEmail}
         setAuthEmail={setAuthEmail}
         authPassword={authPassword}
@@ -709,6 +710,7 @@ export function App() {
         onSubmitRegister={handleRegisterSubmit}
         authLoading={authLoading}
         authError={authError}
+        onClearAuthError={() => setAuthError(null)}
       />
 
       {/* Footer */}

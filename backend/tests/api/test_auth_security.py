@@ -50,8 +50,8 @@ class TestAuthenticationSecurity:
         assert me_resp.status_code == 200
         assert me_resp.json()["email"] == "sunil.verma@example.com"
 
-    async def test_citizen_access_creates_new_citizen(self, client: httpx.AsyncClient):
-        """Verifies low-friction citizen access issues token with CITIZEN role."""
+    async def test_citizen_access_endpoint_is_retired(self, client: httpx.AsyncClient):
+        """Verifies unauthenticated citizen-access endpoint is permanently retired (HTTP 410)."""
         resp = await client.post(
             "/api/v1/auth/citizen-access",
             json={
@@ -59,55 +59,9 @@ class TestAuthenticationSecurity:
                 "email": "aarav.patel@example.com",
             },
         )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
-        assert data["user"]["full_name"] == "Aarav Patel"
-        assert data["user"]["email"] == "aarav.patel@example.com"
-        assert data["user"]["role"] == "CITIZEN"
-
-        # Verify access token works with protected endpoints
-        headers = {"Authorization": f"Bearer {data['access_token']}"}
-        me_resp = await client.get("/api/v1/auth/me", headers=headers)
-        assert me_resp.status_code == 200
-        assert me_resp.json()["role"] == "CITIZEN"
-
-    async def test_citizen_access_existing_citizen_idempotent(self, client: httpx.AsyncClient):
-        """Verifies citizen access returns active token for existing citizen."""
-        resp1 = await client.post(
-            "/api/v1/auth/citizen-access",
-            json={
-                "full_name": "Pooja Hegde",
-                "email": "pooja.hegde@example.com",
-            },
-        )
-        assert resp1.status_code == 200
-
-        resp2 = await client.post(
-            "/api/v1/auth/citizen-access",
-            json={
-                "full_name": "Pooja Hegde",
-                "email": "pooja.hegde@example.com",
-            },
-        )
-        assert resp2.status_code == 200
-        assert resp2.json()["user"]["email"] == "pooja.hegde@example.com"
-        assert resp2.json()["user"]["role"] == "CITIZEN"
-
-    async def test_citizen_access_rejects_staff_email(self, client: httpx.AsyncClient, make_user):
-        """Verifies staff accounts cannot authenticate via citizen access endpoint."""
-        await make_user("operator.staff@queless.gov.in", role=UserRole.OPERATOR)
-
-        resp = await client.post(
-            "/api/v1/auth/citizen-access",
-            json={
-                "full_name": "Operator Staff",
-                "email": "operator.staff@queless.gov.in",
-            },
-        )
-        assert resp.status_code == 403
-        assert "Staff accounts must sign in via the Staff Portal" in resp.json()["detail"]
+        assert resp.status_code == 410
+        assert "retired" in resp.json()["detail"].lower()
+        assert "access_token" not in resp.json()
 
     async def test_duplicate_registration_rejected(self, client: httpx.AsyncClient, make_user):
         """Verifies duplicate email registration is rejected with 409 Conflict."""

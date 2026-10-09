@@ -59,6 +59,7 @@ from app.domain.models import (
     Service,
     ServiceSession,
     User,
+    UserIdentity,
     WaitObservation,
 )
 
@@ -1774,6 +1775,22 @@ async def seed() -> None:
         else:
             cit.hashed_password = get_password_hash("CitizenPass123!")
             cit.full_name = "Citizen Amit Sharma"
+
+        await session.flush()
+        ident_stmt = select(UserIdentity).where(
+            UserIdentity.provider == "google",
+            UserIdentity.provider_subject == "google-sub-seed-citizen",
+        )
+        ident = (await session.execute(ident_stmt)).scalars().first()
+        if not ident:
+            ident = UserIdentity(
+                user_id=cit.id,
+                provider="google",
+                provider_subject="google-sub-seed-citizen",
+                provider_email="citizen@queless.gov.in",
+            )
+            session.add(ident)
+            print("Linked Google identity for citizen: citizen@queless.gov.in")
 
         # ---------------------------------------------------------
         # 3. India Demo Facility Dataset (M6.1.2 — 20 Urban Markets)

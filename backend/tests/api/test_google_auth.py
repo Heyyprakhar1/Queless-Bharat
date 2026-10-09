@@ -1,0 +1,311 @@
+"""Comprehensive test suite for Google OpenID Connect Citizen Authentication (M6.2)."""
+
+import asyncio
+from unittest.mock import patch
+
+import httpx
+import pytest
+from google.auth.exceptions import TransportError
+
+from app.core.config import get_settings
+from app.db.session import async_session_factory
+from app.domain.enums import UserRole
+from app.services.auth_service import AuthService
+
+TEST_CLIENT_ID = "test-google-client-id.apps.googleusercontent.com"
+
+
+@pytest.fixture(autouse=True)
+def configure_google_auth(monkeypatch: pytest.MonkeyPatch):
+    """Configures Google Auth environment settings for test runs."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", TEST_CLIENT_ID)
+    monkeypatch.setattr(settings, "GOOGLE_AUTH_ENABLED", True)
+
+
+def _mock_google_payload(
+    sub: str = "google-sub-10001",
+    email: str = "rahul.citizen@example.com",
+    name: str = "Rahul Sharma",
+    email_verified: bool = True,
+    aud: str = TEST_CLIENT_ID,
+    iss: str = "https://accounts.google.com",
+) -> dict:
+    return {
+        "iss": iss,
+        "aud": aud,
+        "sub": sub,
+        "email": email,
+        "email_verified": email_verified,
+        "name": name,
+    }
+
+
+class TestGoogleCitizenAuthentication:
+    """Tests all aspects of Google OpenID Connect Citizen Authentication."""
+
+    async def test_valid_google_token_creates_citizen(self, client: httpx.AsyncClient):
+        """Verifies valid Google ID token creates new CITIZEN account and returns JWT."""
+        payload = _mock_google_payload(
+            sub="google-sub-12345",
+            email="aarav.verma@example.com",
+            name="Aarav Verma",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "valid.mock.id_token"},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["user"]["email"] == "aarav.verma@example.com"
+        assert data["user"]["full_name"] == "Aarav Verma"
+        assert data["user"]["role"] == "CITIZEN"
+
+        # Verify access token authenticates protected endpoints
+        me_resp = await client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {data['access_token']}"},
+        )
+        assert me_resp.status_code == 200
+        assert me_resp.json()["email"] == "aarav.verma@example.com"
+        assert me_resp.json()["role"] == "CITIZEN"
+
+    async def test_repeat_signin_resolves_same_identity(self, client: httpx.AsyncClient):
+        """Verifies repeated sign-in with same Google sub resolves identical user ID."""
+        payload_1 = _mock_google_payload(
+            sub="google-sub-fixed-id",
+            email="priya.patel@example.com",
+            name="Priya Patel",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_1):
+            resp_1 = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "valid.token.1"},
+            )
+
+        assert resp_1.status_code == 200
+        user_id_1 = resp_1.json()["user"]["id"]
+
+        # Sign in again with potentially updated name
+        payload_2 = _mock_google_payload(
+            sub="google-sub-fixed-id",
+            email="priya.patel@example.com",
+            name="Priya K. Patel",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_2):
+            resp_2 = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "valid.token.2"},
+            )
+
+        assert resp_2.status_code == 200
+        user_id_2 = resp_2.json()["user"]["id"]
+        assert user_id_1 == user_id_2
+        assert resp_2.json()["user"]["full_name"] == "Priya K. Patel"
+
+    async def test_invalid_signature_rejected(self, client: httpx.AsyncClient):
+        """Verifies token with invalid signature raises 401 Unauthorized."""
+        with patch(
+            "google.oauth2.id_token.verify_oauth2_token",
+            side_effect=ValueError("Invalid cryptographic signature"),
+        ):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "tampered.jwt.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "verification failed" in resp.json()["detail"].lower()
+
+    async def test_wrong_issuer_rejected(self, client: httpx.AsyncClient):
+        """Verifies token from untrusted issuer is rejected."""
+        payload = _mock_google_payload(iss="https://untrusted.issuer.com")
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "wrong.issuer.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "invalid token issuer" in resp.json()["detail"].lower()
+
+    async def test_wrong_audience_rejected(self, client: httpx.AsyncClient):
+        """Verifies token intended for a different audience/app is rejected."""
+        payload = _mock_google_payload(aud="another-client-id.apps.googleusercontent.com")
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "wrong.audience.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "invalid audience" in resp.json()["detail"].lower()
+
+    async def test_expired_token_rejected(self, client: httpx.AsyncClient):
+        """Verifies expired Google token is rejected."""
+        with patch(
+            "google.oauth2.id_token.verify_oauth2_token",
+            side_effect=ValueError("Token expired"),
+        ):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "expired.jwt.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "verification failed" in resp.json()["detail"].lower()
+
+    async def test_unverified_email_rejected(self, client: httpx.AsyncClient):
+        """Verifies token with email_verified=False is rejected."""
+        payload = _mock_google_payload(email_verified=False)
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "unverified.email.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "email is not verified" in resp.json()["detail"].lower()
+
+    async def test_missing_subject_claim_rejected(self, client: httpx.AsyncClient):
+        """Verifies token with missing sub claim is rejected."""
+        payload = _mock_google_payload(sub="")
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "missing.sub.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "missing a valid subject" in resp.json()["detail"].lower()
+
+    async def test_provider_network_failure_handled_gracefully(self, client: httpx.AsyncClient):
+        """Verifies network transport failure fetching Google certs returns 401 safely."""
+        with patch(
+            "google.oauth2.id_token.verify_oauth2_token",
+            side_effect=TransportError("Failed to fetch Google signing certificates"),
+        ):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "network.failure.token"},
+            )
+
+        assert resp.status_code == 401
+        assert "network/provider error" in resp.json()["detail"].lower()
+
+    async def test_staff_account_cannot_downgrade_or_login_via_google_citizen(
+        self, client: httpx.AsyncClient, make_user
+    ):
+        """Verifies staff accounts (OPERATOR/ADMIN) cannot login via citizen Google endpoint."""
+        # Create an existing OPERATOR staff account
+        await make_user("operator.rajesh@queless.gov.in", role=UserRole.OPERATOR)
+
+        payload = _mock_google_payload(
+            sub="google-sub-operator-hacker",
+            email="operator.rajesh@queless.gov.in",
+            name="Operator Rajesh",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "operator.spoofed.token"},
+            )
+
+        assert resp.status_code == 403
+        assert "staff accounts must sign in via the staff portal" in resp.json()["detail"].lower()
+
+    async def test_email_collision_does_not_silently_link_password_account(
+        self, client: httpx.AsyncClient, make_user
+    ):
+        """Verifies that an existing password citizen account is not silently hijacked/linked."""
+        # Create a citizen with password authentication
+        await make_user("citizen.existing@example.com", role=UserRole.CITIZEN)
+
+        # Google login arrives with matching email but no linked federated identity
+        payload = _mock_google_payload(
+            sub="new-google-sub-unlinked",
+            email="citizen.existing@example.com",
+            name="Citizen Impersonator",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "unlinked.google.token"},
+            )
+
+        assert resp.status_code == 409
+        assert "silent account linking is disabled" in resp.json()["detail"].lower()
+
+    async def test_client_supplied_role_or_privileges_rejected(self, client: httpx.AsyncClient):
+        """Verifies client cannot pass arbitrary role or service attributes."""
+        resp = await client.post(
+            "/api/v1/auth/google",
+            json={
+                "id_token": "valid.token",
+                "role": "ADMIN",
+                "assigned_service_id": "00000000-0000-0000-0000-000000000000",
+            },
+        )
+        assert resp.status_code == 422  # Extra fields forbidden
+
+    async def test_google_auth_fails_when_configuration_absent(
+        self, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Verifies Google auth endpoint fails closed (HTTP 503) when server config is missing."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", None)
+
+        resp = await client.post(
+            "/api/v1/auth/google",
+            json={"id_token": "any.token"},
+        )
+        assert resp.status_code == 503
+        assert "not configured on the server" in resp.json()["detail"]
+
+    async def test_google_config_endpoint(self, client: httpx.AsyncClient):
+        """Verifies GET /api/v1/auth/google/config returns enabled status and client ID."""
+        resp = await client.get("/api/v1/auth/google/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["enabled"] is True
+        assert data["client_id"] == TEST_CLIENT_ID
+
+    async def test_concurrent_first_signins_prevent_duplicate_accounts(self):
+        """Verifies concurrent first sign-ins resolve cleanly without duplicates or crashes."""
+        payload = _mock_google_payload(
+            sub="google-sub-concurrent-test",
+            email="concurrent.citizen@example.com",
+            name="Concurrent Citizen",
+        )
+
+        async def sign_in_worker():
+            async with async_session_factory() as session:
+                svc = AuthService(session)
+                with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+                    return await svc.authenticate_google_user("dummy.id.token")
+
+        # Launch two workers concurrently
+        res1, res2 = await asyncio.gather(sign_in_worker(), sign_in_worker())
+
+        user1, token1 = res1
+        user2, token2 = res2
+
+        # Both must resolve to the identical user ID and CITIZEN role
+        assert user1.id == user2.id
+        assert user1.role == UserRole.CITIZEN
+        assert user2.role == UserRole.CITIZEN
+        assert token1 is not None
+        assert token2 is not None

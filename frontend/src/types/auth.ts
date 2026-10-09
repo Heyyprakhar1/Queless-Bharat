@@ -29,3 +29,8 @@ export interface RegisterData {
   role?: UserRole
   assigned_service_id?: string | null
 }
+
+export interface GoogleAuthConfig {
+  enabled: boolean
+  client_id: string | null
+}

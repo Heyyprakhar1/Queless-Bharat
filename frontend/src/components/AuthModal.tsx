@@ -1,16 +1,15 @@
 import type React from 'react'
+import { GoogleSignInButton } from './GoogleSignInButton'
+import { Alert, Button } from './ui'
 
 interface AuthModalProps {
   isOpen: boolean
   activeTab: 'citizen' | 'staff' | 'register'
   onClose: () => void
   onTabChange: (tab: 'citizen' | 'staff' | 'register') => void
-  // Low-friction Citizen Access
-  citizenName: string
-  setCitizenName: (name: string) => void
-  citizenEmail: string
-  setCitizenEmail: (email: string) => void
-  onSubmitCitizenAccess: (e: React.FormEvent) => void
+  // Google Citizen Sign-In
+  googleClientId: string | null
+  onGoogleSignIn: (idToken: string) => Promise<void> | void
   // Staff Portal Login
   authEmail: string
   setAuthEmail: (email: string) => void
@@ -24,6 +23,7 @@ interface AuthModalProps {
   // Common states
   authLoading: boolean
   authError: string | null
+  onClearAuthError?: () => void
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -31,11 +31,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   activeTab,
   onClose,
   onTabChange,
-  citizenName,
-  setCitizenName,
-  citizenEmail,
-  setCitizenEmail,
-  onSubmitCitizenAccess,
+  googleClientId,
+  onGoogleSignIn,
   authEmail,
   setAuthEmail,
   authPassword,
@@ -46,19 +43,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSubmitRegister,
   authLoading,
   authError,
+  onClearAuthError,
 }) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-5">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+    >
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 max-w-md w-full p-6 space-y-5">
         {/* Header Tabs */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex space-x-2 sm:space-x-4">
             <button
               id="tab-citizen"
               type="button"
-              onClick={() => onTabChange('citizen')}
+              onClick={() => {
+                if (onClearAuthError) onClearAuthError()
+                onTabChange('citizen')
+              }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'citizen'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
@@ -70,7 +76,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               id="tab-login"
               type="button"
-              onClick={() => onTabChange('staff')}
+              onClick={() => {
+                if (onClearAuthError) onClearAuthError()
+                onTabChange('staff')
+              }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'staff'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
@@ -82,21 +91,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               id="tab-register"
               type="button"
-              onClick={() => onTabChange('register')}
+              onClick={() => {
+                if (onClearAuthError) onClearAuthError()
+                onTabChange('register')
+              }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'register'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              Register
+              Password Register
             </button>
           </div>
           <button
             id="btn-close-modal"
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer p-1"
+            aria-label="Close dialog"
           >
             &times;
           </button>
@@ -104,73 +117,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Error notification */}
         {authError && (
-          <div
+          <Alert
             id="auth-error-msg"
-            className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs"
+            variant="error"
+            title="Authentication Notice"
+            onClose={onClearAuthError}
           >
-            <strong>Authentication Error:</strong> {authError}
-          </div>
+            {authError}
+          </Alert>
         )}
 
-        {/* TAB 1: LOW-FRICTION CITIZEN ACCESS */}
+        {/* TAB 1: GOOGLE CITIZEN IDENTITY VERIFICATION */}
         {activeTab === 'citizen' && (
-          <form onSubmit={onSubmitCitizenAccess} className="space-y-4">
-            <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs text-indigo-900">
-              <span className="font-bold">Instant Citizen Entry:</span> No password required. Enter your full name and email to issue and manage digital queue tokens.
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block" />
+                Verified Citizen Entry
+              </div>
+              <p className="text-slate-600 leading-relaxed">
+                Sign in with Google to issue, track, and manage your civic queue tokens. QueueLess verifies your identity through Google OpenID Connect to prevent impersonation and spot-hoarding.
+              </p>
             </div>
 
-            <div>
-              <label
-                htmlFor="input-citizen-name"
-                className="block text-xs font-semibold text-slate-700 mb-1"
-              >
-                Full Name
-              </label>
-              <input
-                id="input-citizen-name"
-                type="text"
-                required
-                value={citizenName}
-                onChange={(e) => setCitizenName(e.target.value)}
-                placeholder="e.g. Ramesh Patel"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            <div className="pt-2">
+              <GoogleSignInButton
+                clientId={googleClientId}
+                onSuccess={onGoogleSignIn}
+                onError={(_msg) => {
+                  if (onClearAuthError) onClearAuthError()
+                }}
+                isLoading={authLoading}
+                disabled={authLoading}
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="input-citizen-email"
-                className="block text-xs font-semibold text-slate-700 mb-1"
-              >
-                Email Address
-              </label>
-              <input
-                id="input-citizen-email"
-                type="email"
-                required
-                value={citizenEmail}
-                onChange={(e) => setCitizenEmail(e.target.value)}
-                placeholder="ramesh.patel@example.com"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+            <div className="pt-2 text-center text-[11px] text-slate-400">
+              Only standard OpenID profile and email scopes are requested.
             </div>
-
-            <button
-              id="btn-submit-citizen-access"
-              type="submit"
-              disabled={authLoading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
-            >
-              {authLoading ? 'Signing in...' : 'Continue as Citizen'}
-            </button>
-          </form>
+          </div>
         )}
 
         {/* TAB 2: STAFF PORTAL (EMAIL + PASSWORD, BACKEND ROLE DERIVATION) */}
         {activeTab === 'staff' && (
           <form onSubmit={onSubmitStaffLogin} className="space-y-4">
-            <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
-              <span className="font-bold">Staff Access:</span> For counter operators and system administrators. Enter assigned work credentials. Roles are verified securely by the backend.
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+              <span className="font-bold text-slate-900">Staff Portal:</span> For counter operators and system administrators. Enter assigned credentials. Permissions are verified strictly by the backend.
             </div>
 
             <div>
@@ -209,20 +201,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               />
             </div>
 
-            <button
+            <Button
               id="btn-submit-login"
               type="submit"
+              variant="primary"
+              size="md"
               disabled={authLoading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+              isLoading={authLoading}
+              loadingText="Signing in..."
+              className="w-full justify-center"
             >
-              {authLoading ? 'Signing in...' : 'Sign In to Staff Portal'}
-            </button>
+              Sign In to Staff Portal
+            </Button>
           </form>
         )}
 
-        {/* TAB 3: TRADITIONAL CITIZEN REGISTRATION */}
+        {/* TAB 3: CITIZEN PASSWORD REGISTRATION (SECONDARY) */}
         {activeTab === 'register' && (
           <form onSubmit={onSubmitRegister} className="space-y-4">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+              Password account registration is strictly unprivileged (<span className="font-semibold text-slate-800">CITIZEN role only</span>).
+            </div>
+
             <div>
               <label
                 htmlFor="input-register-name"
@@ -278,14 +278,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               />
             </div>
 
-            <button
+            <Button
               id="btn-submit-register"
               type="submit"
+              variant="primary"
+              size="md"
               disabled={authLoading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+              isLoading={authLoading}
+              loadingText="Creating account..."
+              className="w-full justify-center"
             >
-              {authLoading ? 'Creating account...' : 'Create Account'}
-            </button>
+              Create Account
+            </Button>
           </form>
         )}
       </div>

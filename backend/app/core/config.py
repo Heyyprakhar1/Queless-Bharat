@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     ENABLE_HSTS: bool = False
 
+    # Google Identity / OpenID Connect Settings
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_AUTH_ENABLED: bool = False
+
     # Trusted Proxy & Rate Limiting
     TRUST_PROXY_HEADERS: bool = False
     TRUSTED_PROXIES: Annotated[list[str], BeforeValidator(_parse_origins)] = [
@@ -109,6 +114,13 @@ class Settings(BaseSettings):
                 raise ValueError(
                     f"AUTH_SECRET_KEY must be at least 32 characters in {self.ENVIRONMENT} mode."
                 )
+            if self.GOOGLE_AUTH_ENABLED:
+                invalid_google_ids = {"", "your-google-client-id", "placeholder", "changeme"}
+                if not self.GOOGLE_CLIENT_ID or self.GOOGLE_CLIENT_ID.strip() in invalid_google_ids:
+                    raise ValueError(
+                        f"GOOGLE_CLIENT_ID must be configured in {self.ENVIRONMENT} "
+                        "mode when GOOGLE_AUTH_ENABLED is True."
+                    )
         return self
 
     @property

@@ -58,11 +58,14 @@ async function setupIsolatedService(request: any, name: string) {
 }
 
 async function loginAsCitizen(page: any) {
-  await page.click('#btn-open-citizen-access')
-  await page.fill('#input-citizen-name', 'Citizen Amit Sharma')
-  await page.fill('#input-citizen-email', 'citizen@queless.gov.in')
-  await page.click('#btn-submit-citizen-access')
+  await page.click('#btn-open-auth')
+  await page.fill('#input-login-email', 'citizen@queless.gov.in')
+  await page.fill('#input-login-password', 'CitizenPass123!')
+  await page.click('#btn-submit-login')
   await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+  if (await page.locator('#tab-view-citizen').isVisible()) {
+    await page.click('#tab-view-citizen')
+  }
 }
 
 async function loginAsAdmin(page: any) {

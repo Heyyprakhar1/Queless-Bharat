@@ -1,16 +1,18 @@
 import type React from 'react'
 import type { User } from '../types/auth'
 import type { Service, UserQueueStatusResponse } from '../types/queue'
+import { Alert, Badge, Button, Card } from './ui'
 
 interface CitizenTokenDeskProps {
   currentUser: User | null
+  onOpenSignIn?: () => void
   services: Service[]
   selectedServiceId: string
   onSelectService: (serviceId: string) => void
-  citizenName: string
-  onChangeCitizenName: (name: string) => void
-  citizenEmail: string
-  onChangeCitizenEmail: (email: string) => void
+  citizenName?: string
+  onChangeCitizenName?: (name: string) => void
+  citizenEmail?: string
+  onChangeCitizenEmail?: (email: string) => void
   activeSessionId: string
   userStatus: UserQueueStatusResponse | null
   citizenLoading: boolean
@@ -27,13 +29,14 @@ interface CitizenTokenDeskProps {
 
 export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
   currentUser,
+  onOpenSignIn,
   services,
   selectedServiceId,
   onSelectService,
   citizenName,
   onChangeCitizenName,
-  citizenEmail,
-  onChangeCitizenEmail,
+  citizenEmail: _citizenEmail,
+  onChangeCitizenEmail: _onChangeCitizenEmail,
   activeSessionId,
   userStatus,
   citizenLoading,
@@ -50,7 +53,7 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
   const isTerminalTicket =
     userStatus?.session.status === 'COMPLETED' || userStatus?.session.status === 'CANCELLED'
 
-  // Format token cleanly: prefer queue position or short ticket code
+  // Format token cleanly: human-readable queue position or compact ticket code
   const tokenDisplay = userStatus?.position
     ? `#Q-${String(userStatus.position).padStart(3, '0')}`
     : activeSessionId
@@ -58,83 +61,125 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
       : ''
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+    <Card variant="elevated" className="space-y-6">
+      {/* Desk Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-black text-slate-900">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">
               Citizen Digital Token Desk
             </h2>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-              Self-Service Queue Desk
-            </span>
+            <Badge variant="success" size="sm">
+              Civic Self-Service
+            </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Join an active public queue, obtain a digital token, and track your deterministic wait time in real-time.
+            Join public queue lines, receive verified digital tokens, and track deterministic waiting times.
           </p>
         </div>
 
-        {activeSessionId && (
+        {activeSessionId && userStatus && (
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200">
+            <Badge variant="primary" size="md" className="font-mono font-bold text-xs">
               Token {tokenDisplay}
-            </span>
+            </Badge>
           </div>
         )}
       </div>
 
       {/* Recoverable Notice Banner (e.g. after stale 404 session recovery) */}
       {sessionNotice && (
-        <div
+        <Alert
           id="stale-session-notice"
-          className="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs sm:text-sm flex items-center justify-between"
+          variant="info"
+          title="Session Notice"
+          onClose={onClearSessionNotice}
         >
-          <div className="flex items-center space-x-2">
-            <span className="font-bold uppercase tracking-wider text-[10px] bg-sky-200 text-sky-900 px-1.5 py-0.5 rounded">
-              NOTICE
-            </span>
-            <span>{sessionNotice}</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClearSessionNotice}
-            className="text-sky-600 hover:text-sky-800 font-bold ml-2 cursor-pointer"
-          >
-            &times;
-          </button>
-        </div>
+          {sessionNotice}
+        </Alert>
       )}
 
-      {/* Citizen Error Message */}
+      {/* Error Message */}
       {citizenError && (
-        <div
-          id="citizen-error-msg"
-          className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm"
-        >
-          <strong>Notice:</strong> {citizenError}
-        </div>
+        <Alert id="citizen-error-msg" variant="error" title="Notice">
+          {citizenError}
+        </Alert>
       )}
 
-      {/* FORM: Issue New Digital Token */}
-      {!activeSessionId ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* STATE 1: SIGNED OUT — GOOGLE AUTH REQUIRED */}
+      {!currentUser ? (
+        <div id="token-desk-signed-out" className="py-8 px-4 text-center space-y-4 max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 mx-auto flex items-center justify-center text-indigo-600">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
+            </svg>
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-slate-900">
+              Verified Citizen Access Required
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              To issue a digital queue token and reserve your service window, please sign in using your verified Google identity. This guarantees genuine personal queuing and stops slot hoarding.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              id="btn-desk-signin"
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={onOpenSignIn}
+              className="w-full sm:w-auto px-6 py-2.5 shadow-sm"
+            >
+              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                <path
+                  fill="#ffffff"
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                />
+              </svg>
+              Continue with Google to Issue Token
+            </Button>
+          </div>
+        </div>
+      ) : !activeSessionId ? (
+        /* STATE 2: SIGNED IN WITH NO ACTIVE TOKEN — SERVICE SELECTION FORM */
+        <div id="token-desk-issue-token" className="space-y-5">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center space-x-2">
+              <span className="text-slate-500">Verified Citizen:</span>
+              <span id="desk-verified-identity" className="font-bold text-slate-900">
+                {currentUser.full_name} ({currentUser.email})
+              </span>
+            </div>
+            <Badge variant="primary" size="sm">
+              CITIZEN
+            </Badge>
+          </div>
+
+          <div className="space-y-4">
             <div>
               <label
                 htmlFor="facility-service"
                 className="block text-xs font-semibold text-slate-700 mb-1"
               >
-                Select Public Service
+                Select Civic Service Window
               </label>
               <select
                 id="facility-service"
                 value={selectedServiceId}
                 onChange={(e) => onSelectService(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 disabled={services.length === 0}
               >
                 {services.length === 0 ? (
-                  <option value="">No services available</option>
+                  <option value="">No services available for selected facility</option>
                 ) : (
                   services.map((svc) => (
                     <option key={svc.id} value={svc.id}>
@@ -150,70 +195,54 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                 htmlFor="citizen-name"
                 className="block text-xs font-semibold text-slate-700 mb-1"
               >
-                Citizen Full Name
+                Citizen Participant Name
               </label>
               <input
                 id="citizen-name"
                 type="text"
-                value={citizenName}
-                onChange={(e) => onChangeCitizenName(e.target.value)}
-                placeholder="e.g. Citizen Amit Sharma"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={citizenName || ''}
+                onChange={(e) => onChangeCitizenName?.(e.target.value)}
+                placeholder={currentUser.full_name || 'Citizen Full Name'}
+                className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="citizen-email"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+            <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <Button
+                id="btn-join-queue"
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={onJoinQueue}
+                disabled={citizenLoading || (services.length === 0 && !selectedDemoServiceId)}
+                isLoading={citizenLoading}
+                loadingText="Issuing Digital Token..."
               >
-                Email Address
-              </label>
-              <input
-                id="citizen-email"
-                type="email"
-                value={citizenEmail}
-                onChange={(e) => onChangeCitizenEmail(e.target.value)}
-                placeholder="citizen@queless.gov.in"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
+                Issue Digital Token
+              </Button>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <button
-              id="btn-join-queue"
-              type="button"
-              onClick={onJoinQueue}
-              disabled={citizenLoading || (services.length === 0 && !selectedDemoServiceId)}
-              className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
-            >
-              {citizenLoading ? 'Issuing Digital Token...' : 'Issue Digital Token'}
-            </button>
-
-            {!currentUser && (
               <span className="text-xs text-slate-500">
-                Low-friction citizen access. An unprivileged citizen token session will be issued automatically.
+                Token will be assigned under your verified Google identity.
               </span>
-            )}
+            </div>
           </div>
         </div>
       ) : userStatus ? (
-        /* LIVE ACTIVE TICKET DISPLAY */
-        <div className="space-y-6">
-          <div className="p-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100">
+        /* STATE 3: LIVE ACTIVE TOKEN DISPLAY */
+        <div id="token-desk-active-ticket" className="space-y-6">
+          <div className="p-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-slate-50/50 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100/80">
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
                     {userStatus.service.name}
                   </span>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-900">
+                  <Badge variant="primary" size="sm" className="font-mono font-bold">
                     {tokenDisplay}
-                  </span>
+                  </Badge>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mt-0.5">
-                  {citizenName || userStatus.session.user_id || 'Citizen Participant'}
+                <h3 className="text-lg font-bold text-slate-900 mt-1">
+                  {currentUser.full_name || userStatus.session.user_id || 'Citizen Participant'}
                 </h3>
                 <p className="text-[11px] font-mono text-slate-400">
                   Ref: {userStatus.session.id}
@@ -223,40 +252,40 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
               {/* Status Badge */}
               <div>
                 {userStatus.session.status === 'WAITING' && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-pulse" />
+                  <Badge variant="warning" size="md">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1" />
                     WAITING IN LINE
-                  </span>
+                  </Badge>
                 )}
                 {userStatus.session.status === 'IN_SERVICE' && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-ping" />
+                  <Badge variant="success" size="md">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1" />
                     NOW AT COUNTER (IN SERVICE)
-                  </span>
+                  </Badge>
                 )}
                 {userStatus.session.status === 'COMPLETED' && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                  <Badge variant="neutral" size="md">
                     COMPLETED
-                  </span>
+                  </Badge>
                 )}
                 {userStatus.session.status === 'CANCELLED' && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                  <Badge variant="danger" size="md">
                     CANCELLED
-                  </span>
+                  </Badge>
                 )}
               </div>
             </div>
 
-            {/* Live Position & People Ahead Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-              <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-xs text-slate-500 uppercase font-semibold">
-                  Your Position
+            {/* Live Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">
+                  Your Queue Position
                 </span>
                 <div className="text-3xl font-black text-indigo-600 mt-1">
                   {userStatus.position !== null ? `#${userStatus.position}` : '—'}
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 mt-1 block">
                   {userStatus.session.status === 'WAITING'
                     ? 'in queue line'
                     : userStatus.session.status === 'IN_SERVICE'
@@ -265,23 +294,23 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                 </span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-xs text-slate-500 uppercase font-semibold">
-                  People Ahead of You
+              <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">
+                  People Ahead
                 </span>
-                <div className="text-3xl font-black text-slate-800 mt-1">
+                <div className="text-3xl font-black text-slate-900 mt-1">
                   {userStatus.people_ahead}
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 mt-1 block">
                   {userStatus.people_ahead === 0 && userStatus.session.status === 'WAITING'
                     ? "You're next in line!"
-                    : 'waiting participants ahead'}
+                    : 'citizens ahead of you'}
                 </span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-xs text-slate-500 uppercase font-semibold">
-                  Personal Wait Estimate
+              <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+                <span className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">
+                  Estimated Wait
                 </span>
                 <div className="mt-1">
                   {userStatus.estimated_wait.is_available ? (
@@ -289,18 +318,16 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                       <div className="text-2xl font-black text-slate-900">
                         {userStatus.estimated_wait.lower_minutes}&ndash;
                         {userStatus.estimated_wait.upper_minutes}{' '}
-                        <span className="text-sm font-normal text-slate-600">mins</span>
+                        <span className="text-sm font-normal text-slate-500">mins</span>
                       </div>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 mt-1 block">
                         Expected: ~{userStatus.estimated_wait.expected_minutes} mins
                       </span>
                     </>
                   ) : (
                     <>
-                      <div className="text-sm font-semibold text-amber-700">
-                        Estimating...
-                      </div>
-                      <span className="text-xs text-slate-500">
+                      <div className="text-sm font-semibold text-amber-700">Estimating...</div>
+                      <span className="text-xs text-slate-500 mt-1 block">
                         {userStatus.estimated_wait.reason || 'Data baseline accumulating'}
                       </span>
                     </>
@@ -309,8 +336,13 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
               </div>
             </div>
 
-            {/* Polling indication and actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4 mt-4 border-t border-indigo-100 text-xs">
+            {/* Civic Projection Disclaimer */}
+            <div className="text-[11px] text-slate-500 bg-white/70 p-2.5 rounded-lg border border-slate-200/60 leading-relaxed">
+              <span className="font-semibold text-slate-700">Civic Advisory:</span> Waiting time estimates are deterministic projections based on recent window throughput, not guaranteed departure times.
+            </div>
+
+            {/* Short Polling Status & Actions */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-indigo-100 text-xs">
               <div className="text-slate-500 flex items-center space-x-2">
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -320,37 +352,40 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                 <span>
                   {isTerminalTicket
                     ? 'Queue session ended. Polling stopped.'
-                    : 'Auto-updating via HTTP short polling (5s interval)'}
+                    : 'Auto-updating via HTTP short polling (5s)'}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <button
+              <div className="flex items-center space-x-2">
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={onRefreshTicket}
                   disabled={citizenLoading}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-medium transition cursor-pointer"
                 >
                   Refresh
-                </button>
+                </Button>
 
                 {!isTerminalTicket ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="sm"
                     onClick={onCancelTicket}
                     disabled={citizenLoading}
-                    className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 font-medium transition cursor-pointer"
                   >
                     Leave Queue / Cancel
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
+                    variant="primary"
+                    size="sm"
                     onClick={onDismissTicket}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition cursor-pointer"
                   >
                     Take New Token
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -360,10 +395,25 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
           {children}
         </div>
       ) : (
-        <div className="p-6 text-center text-sm text-slate-500">
-          Loading digital token details...
+        /* STATE 4: LOADING / RECOVERING STATE (No infinite spinner) */
+        <div id="token-desk-loading" className="py-8 text-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+          <p className="text-xs sm:text-sm text-slate-500">
+            Checking personal digital token details...
+          </p>
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onDismissTicket}
+              className="text-xs text-slate-600"
+            >
+              Reset Session
+            </Button>
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

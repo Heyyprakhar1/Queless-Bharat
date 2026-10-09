@@ -66,6 +66,27 @@ def test_production_secret_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert prod_settings.ENVIRONMENT == "production"
 
+    # Production with GOOGLE_AUTH_ENABLED=True but missing client ID fails closed
+    with pytest.raises(ValidationError) as exc:
+        Settings(
+            ENVIRONMENT="production",
+            AUTH_SECRET_KEY="production-secure-random-token-minimum-32-chars!",
+            GOOGLE_AUTH_ENABLED=True,
+            GOOGLE_CLIENT_ID=None,
+        )
+    assert "GOOGLE_CLIENT_ID" in str(exc.value)
+
+    # Production with GOOGLE_AUTH_ENABLED=True and valid client ID succeeds
+    prod_google_settings = Settings(
+        ENVIRONMENT="production",
+        AUTH_SECRET_KEY="production-secure-random-token-minimum-32-chars!",
+        GOOGLE_AUTH_ENABLED=True,
+        GOOGLE_CLIENT_ID="valid-google-client-id.apps.googleusercontent.com",
+    )
+    assert prod_google_settings.GOOGLE_AUTH_ENABLED is True
+    expected_id = "valid-google-client-id.apps.googleusercontent.com"
+    assert prod_google_settings.GOOGLE_CLIENT_ID == expected_id
+
 
 def test_cors_origin_parsing() -> None:
     """Verifies CORS origin parser handles strings, lists, and JSON arrays safely."""
