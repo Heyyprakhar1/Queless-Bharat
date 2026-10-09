@@ -69,4 +69,5 @@ def decode_access_token(token: str) -> dict[str, Any]:
         settings.AUTH_SECRET_KEY,
         algorithms=[settings.AUTH_ALGORITHM],
         options={"require": ["exp", "sub", "role"]},
+        leeway=10,
     )
