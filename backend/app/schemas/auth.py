@@ -18,6 +18,30 @@ class CitizenRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
 
 
+class CitizenAccessRequest(BaseModel):
+    """Payload for low-friction citizen onboarding and demo session access."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    full_name: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
+
+
+class GoogleAuthRequest(BaseModel):
+    """Payload for citizen Sign in with Google verification."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id_token: str = Field(..., min_length=1, description="Google OpenID Connect ID token")
+
+
+class GoogleAuthConfigResponse(BaseModel):
+    """Public configuration state for Google authentication."""
+
+    enabled: bool
+    client_id: str | None = None
+
+
 # Alias for backward compatibility
 UserRegisterRequest = CitizenRegisterRequest
 

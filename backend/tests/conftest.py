@@ -21,8 +21,9 @@ async def clean_database() -> AsyncGenerator[None, None]:
     async with async_session_factory() as session:
         await session.execute(
             text(
-                "TRUNCATE TABLE users, locations, services, counters, queue_sessions, "
-                "queue_events, service_sessions, wait_observations, estimates CASCADE;"
+                "TRUNCATE TABLE users, user_identities, locations, services, "
+                "counters, queue_sessions, queue_events, service_sessions, "
+                "wait_observations, estimates CASCADE;"
             )
         )
         await session.commit()

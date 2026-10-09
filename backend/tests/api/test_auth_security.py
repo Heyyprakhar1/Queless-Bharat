@@ -50,6 +50,19 @@ class TestAuthenticationSecurity:
         assert me_resp.status_code == 200
         assert me_resp.json()["email"] == "sunil.verma@example.com"
 
+    async def test_citizen_access_endpoint_is_retired(self, client: httpx.AsyncClient):
+        """Verifies unauthenticated citizen-access endpoint is permanently retired (HTTP 410)."""
+        resp = await client.post(
+            "/api/v1/auth/citizen-access",
+            json={
+                "full_name": "Aarav Patel",
+                "email": "aarav.patel@example.com",
+            },
+        )
+        assert resp.status_code == 410
+        assert "retired" in resp.json()["detail"].lower()
+        assert "access_token" not in resp.json()
+
     async def test_duplicate_registration_rejected(self, client: httpx.AsyncClient, make_user):
         """Verifies duplicate email registration is rejected with 409 Conflict."""
         await make_user("duplicate@example.com", role=UserRole.CITIZEN)

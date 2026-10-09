@@ -12,11 +12,20 @@ class UserRole(StrEnum):
 
 
 class LocationCategory(StrEnum):
-    """Initial MVP civic domains."""
+    """Representative civic, public service, and institutional domains."""
 
     HOSPITAL = "hospital"
-    RTO = "rto"
     GOVERNMENT_OFFICE = "government_office"
+    RTO = "rto"
+    MUNICIPAL_SERVICE_CENTRE = "municipal_service_centre"
+    UNIVERSITY = "university"
+    COLLEGE = "college"
+    DIAGNOSTIC_CENTRE = "diagnostic_centre"
+    BANK = "bank"
+    RESTAURANT = "restaurant"
+    CAFETERIA = "cafeteria"
+    HOTEL = "hotel"
+    PUBLIC_SERVICE_CENTRE = "public_service_centre"
 
 
 class LocationStatus(StrEnum):

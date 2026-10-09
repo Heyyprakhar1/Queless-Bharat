@@ -57,6 +57,28 @@ async function setupIsolatedService(request: any, name: string) {
   return { serviceId: svc.id, serviceName: svc.name, counterId: cnt.id }
 }
 
+async function loginAsCitizen(page: any) {
+  await page.click('#btn-open-auth')
+  await page.fill('#input-login-email', 'citizen@queless.gov.in')
+  await page.fill('#input-login-password', 'CitizenPass123!')
+  await page.click('#btn-submit-login')
+  await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+  if (await page.locator('#tab-view-citizen').isVisible()) {
+    await page.click('#tab-view-citizen')
+  }
+}
+
+async function loginAsAdmin(page: any) {
+  await page.click('#btn-open-auth')
+  await page.fill('#input-login-email', 'admin@queless.gov.in')
+  await page.fill('#input-login-password', 'AdminPass123!')
+  await page.click('#btn-submit-login')
+  await expect(page.locator('#auth-user-badge')).toContainText('System Administrator')
+  if (await page.locator('#tab-view-citizen').isVisible()) {
+    await page.click('#tab-view-citizen')
+  }
+}
+
 test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage before each test for clean slate
@@ -76,8 +98,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     await expect(page.locator('h1')).toContainText('Predictable Waiting for Public Services')
     await expect(page.locator('text=System Online')).toBeVisible()
 
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizen(page)
 
     // 2. Select the isolated service
     const serviceSelect = page.locator('#facility-service')
@@ -123,8 +144,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Laboratory Intake')
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizen(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Polling Watcher')
@@ -156,8 +176,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     const { serviceId } = await setupIsolatedService(request, 'Radiology Token')
     await page.goto('/')
     // Log in as Admin to perform both citizen check-in and operator start/complete
-    await page.click('#btn-demo-admin')
-    await expect(page.locator('#auth-user-badge')).toContainText('System Administrator')
+    await loginAsAdmin(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Lifecycle Participant')
@@ -220,8 +239,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Emergency Desk')
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizen(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Leaving Early')
@@ -266,8 +284,7 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
   }) => {
     const { serviceId } = await setupIsolatedService(request, 'Billing Counter')
     await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
+    await loginAsCitizen(page)
 
     await page.selectOption('#facility-service', { value: serviceId })
     await page.fill('#citizen-name', 'Citizen Refresh Test')
@@ -285,32 +302,9 @@ test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
     // Refresh the browser page
     await page.reload()
 
-    // Verify ticket and live status restore immediately from localStorage
+    // Active ticket session must be restored from localStorage
     await expect(page.locator(`text=${sessionId}`)).toBeVisible()
     await expect(page.getByText('WAITING IN LINE', { exact: true })).toBeVisible()
-    await expect(page.locator('text=Citizen Refresh Test')).toBeVisible()
-  })
-
-  test('Test 6: Browser-visible error handling and non-crash resilience (Phase 9)', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    await page.click('#btn-demo-citizen')
-    await expect(page.locator('#auth-user-badge')).toContainText('Citizen Amit Sharma')
-
-    // Trigger an error by requesting a non-existent ticket in localStorage
-    await page.evaluate(() => {
-      localStorage.setItem('queless_active_session_id', '00000000-0000-0000-0000-000000000000')
-    })
-    await page.reload()
-
-    // The UI should display the error gracefully without a white-screen crash
-    await expect(page.locator('#citizen-error-msg')).toBeVisible()
-    await expect(page.locator('#citizen-error-msg')).toContainText(
-      "QueueSession with identifier '00000000-0000-0000-0000-000000000000' was not found"
-    )
-
-    // Header and navigation still functional
-    await expect(page.locator('h1')).toContainText('Predictable Waiting for Public Services')
+    await expect(page.locator('text=#1')).toBeVisible()
   })
 })

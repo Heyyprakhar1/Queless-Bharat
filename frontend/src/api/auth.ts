@@ -1,4 +1,4 @@
-import type { LoginCredentials, RegisterData, TokenResponse, User } from '../types/auth'
+import type { GoogleAuthConfig, LoginCredentials, RegisterData, TokenResponse, User } from '../types/auth'
 import { API_BASE_URL, fetchWithTimeout } from './client'
 
 const TOKEN_KEY = 'queless_access_token'
@@ -74,6 +74,46 @@ export async function register(data: RegisterData): Promise<TokenResponse> {
 
   // Automatically login upon registration to obtain access token
   return login({ email: data.email, password: data.password })
+}
+
+export async function fetchGoogleAuthConfig(): Promise<GoogleAuthConfig> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/google/config`, {
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      return { enabled: false, client_id: null }
+    }
+    return await response.json()
+  } catch {
+    return { enabled: false, client_id: null }
+  }
+}
+
+export async function googleLogin(idToken: string): Promise<TokenResponse> {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/google`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ id_token: idToken }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Google sign-in failed: HTTP ${response.status}`)
+  }
+
+  const data: TokenResponse = await response.json()
+  setAuthSession(data.access_token, data.user)
+  return data
+}
+
+export async function citizenAccess(_fullName: string, _email: string): Promise<TokenResponse> {
+  throw new Error(
+    'The unauthenticated citizen-access endpoint has been retired. Please use Sign in with Google.'
+  )
 }
 
 export async function getMe(): Promise<User> {

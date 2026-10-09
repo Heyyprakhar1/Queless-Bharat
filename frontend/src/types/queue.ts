@@ -1,4 +1,16 @@
-export type LocationCategory = 'hospital' | 'rto' | 'government_office'
+export type LocationCategory =
+  | 'hospital'
+  | 'government_office'
+  | 'rto'
+  | 'municipal_service_centre'
+  | 'university'
+  | 'college'
+  | 'diagnostic_centre'
+  | 'bank'
+  | 'restaurant'
+  | 'cafeteria'
+  | 'hotel'
+  | 'public_service_centre'
 
 export interface Location {
   id: string

@@ -59,6 +59,7 @@ from app.domain.models import (
     Service,
     ServiceSession,
     User,
+    UserIdentity,
     WaitObservation,
 )
 
@@ -802,6 +803,755 @@ FACILITY_SPECS = [
             },
         ],
     },
+    # --- PUNE (Additional Category: COLLEGE) ---
+    {
+        "city": "Pune",
+        "state": "Maharashtra",
+        "name": "Fergusson College Campus Office",
+        "category": LocationCategory.COLLEGE,
+        "address": "FC Road, Shivajinagar, Pune, Maharashtra 411004",
+        "latitude": 18.5236,
+        "longitude": 73.8415,
+        "services": [
+            {
+                "name": "Admissions & Merit List Verification",
+                "description": "Document verification and academic admission seat clearance",
+                "counters": [
+                    {"name": "Counter 1 - Intake", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2 - Documents", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 7,
+                    "durations": [210, 240, 225, 230, 215, 240, 220],
+                },
+            },
+            {
+                "name": "Tuition Fee & Scholarship Window",
+                "description": "Semester fee collection and scholarship documentation clearance",
+                "counters": [
+                    {"name": "Window 1", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 2,
+                    "durations": [120, 135, 130, 125, 140],
+                },
+            },
+        ],
+    },
+    # --- BENGALURU (Additional Category: DIAGNOSTIC CENTRE) ---
+    {
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "name": "National Diagnostic Centre (Indiranagar)",
+        "category": LocationCategory.DIAGNOSTIC_CENTRE,
+        "address": "100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru, Karnataka 560038",
+        "latitude": 12.9719,
+        "longitude": 77.6412,
+        "services": [
+            {
+                "name": "Fast-Track Blood Sampling",
+                "description": "Pathology blood sample collection token desk",
+                "counters": [
+                    {"name": "Phlebotomy Bay 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Phlebotomy Bay 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 4,
+                    "durations": [110, 125, 120, 115, 130, 120],
+                },
+            },
+            {
+                "name": "Ultrasound & Imaging Token Desk",
+                "description": "Diagnostic ultrasound and radiologic scan appointment clearance",
+                "counters": [
+                    {"name": "Imaging Desk 1", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 6,
+                    "durations": [360, 400, 380, 410, 390],
+                },
+            },
+        ],
+    },
+    # --- HYDERABAD (Telangana) ---
+    {
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "name": "Osmania General Hospital",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Afzal Gunj, Hyderabad, Telangana 500012",
+        "latitude": 17.3753,
+        "longitude": 78.4744,
+        "services": [
+            {
+                "name": "OPD Specialty Consultation",
+                "description": "Outpatient clinic token distribution and medical evaluation",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 12,
+                    "durations": [240, 260, 250, 245, 255, 240, 270, 250],
+                },
+            },
+            {
+                "name": "Free Pharmacy Window",
+                "description": "Government generic medicine and prescription fulfillment",
+                "counters": [
+                    {"name": "Window 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Window 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 5,
+                    "durations": [90, 105, 95, 100, 110, 95],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "name": "GHMC Citizen Service Centre (Khairatabad)",
+        "category": LocationCategory.MUNICIPAL_SERVICE_CENTRE,
+        "address": "Opposite Shadan College, Khairatabad, Hyderabad, Telangana 500004",
+        "latitude": 17.4065,
+        "longitude": 78.4611,
+        "services": [
+            {
+                "name": "Trade Licence & Property Tax",
+                "description": "Municipal commercial licensing and property tax assessment",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 8,
+                    "durations": [180, 200, 190, 210, 185],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "name": "Cyberabad Cyber Towers Food Court",
+        "category": LocationCategory.CAFETERIA,
+        "address": "HITEC City, Madhapur, Hyderabad, Telangana 500081",
+        "latitude": 17.4504,
+        "longitude": 78.3808,
+        "services": [
+            {
+                "name": "Express Lunch Order & Pickup",
+                "description": "Quick-service meal ordering and food dispatch counter",
+                "counters": [
+                    {"name": "Express Window 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Express Window 2", "status": CounterStatus.ACTIVE},
+                    {"name": "Express Window 3", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 14,
+                    "durations": [65, 75, 70, 60, 80, 70, 65, 75],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "name": "State Bank of India (Koti Main Branch)",
+        "category": LocationCategory.BANK,
+        "address": "Bank Street, Koti, Hyderabad, Telangana 500095",
+        "latitude": 17.3871,
+        "longitude": 78.4827,
+        "services": [
+            {
+                "name": "Cash & High-Value Transactions",
+                "description": "Teller counter for currency deposits, withdrawals, and drafts",
+                "counters": [
+                    {"name": "Teller 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Teller 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 9,
+                    "durations": [180, 210, 195, 200, 220, 190],
+                },
+            },
+            {
+                "name": "KYC Verification & Account Desk",
+                "description": "Mandatory biometrics KYC and account profile verification",
+                "counters": [
+                    {"name": "Desk A", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 5,
+                    "durations": [240, 270, 255, 260],
+                },
+            },
+        ],
+    },
+    # --- AHMEDABAD (Gujarat) ---
+    {
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "name": "Ahmedabad Regional Transport Office (GJ-01 Subhash Bridge)",
+        "category": LocationCategory.RTO,
+        "address": "Subhash Bridge, Sabarmati, Ahmedabad, Gujarat 380027",
+        "latitude": 23.0645,
+        "longitude": 72.5850,
+        "services": [
+            {
+                "name": "Driving Licence Renewal & Biometrics",
+                "description": "Smart card licence renewal, address change, and photo capture",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 10,
+                    "durations": [180, 200, 190, 210, 195, 185],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "name": "Gujarat University Student Facilitation Centre",
+        "category": LocationCategory.UNIVERSITY,
+        "address": "Navrangpura, Ahmedabad, Gujarat 380009",
+        "latitude": 23.0378,
+        "longitude": 72.5447,
+        "services": [
+            {
+                "name": "Transcript & Degree Verification",
+                "description": "Academic transcript requests and degree certificate verification",
+                "counters": [
+                    {"name": "Window 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Window 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 6,
+                    "durations": [240, 270, 250, 260, 245],
+                },
+            },
+        ],
+    },
+    # --- JAIPUR (Rajasthan) ---
+    {
+        "city": "Jaipur",
+        "state": "Rajasthan",
+        "name": "Sawai Man Singh (SMS) Hospital",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Jawahar Lal Nehru Marg, Jaipur, Rajasthan 302004",
+        "latitude": 26.8978,
+        "longitude": 75.8153,
+        "services": [
+            {
+                "name": "Dhanwantari OPD Registration",
+                "description": "General physician consultation and specialty triage desk",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 3", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "long",
+                    "waiting_count": 22,
+                    "durations": [150, 165, 160, 170, 155, 165, 150, 175],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Jaipur",
+        "state": "Rajasthan",
+        "name": "Rajasthan Public Service Centre (Mini Secretariat)",
+        "category": LocationCategory.GOVERNMENT_OFFICE,
+        "address": "Bani Park, Jaipur, Rajasthan 302016",
+        "latitude": 26.9298,
+        "longitude": 75.7925,
+        "services": [
+            {
+                "name": "Jan Aadhaar Card Update & Verification",
+                "description": "Family card biometric update and government scheme linkage",
+                "counters": [
+                    {"name": "Desk 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Desk 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 8,
+                    "durations": [180, 195, 190, 205, 185],
+                },
+            },
+        ],
+    },
+    # --- GURUGRAM (Haryana) ---
+    {
+        "city": "Gurugram",
+        "state": "Haryana",
+        "name": "Mini Secretariat Gurugram",
+        "category": LocationCategory.GOVERNMENT_OFFICE,
+        "address": "Civil Lines, Near Rajiv Chowk, Gurugram, Haryana 122001",
+        "latitude": 28.4552,
+        "longitude": 77.0321,
+        "services": [
+            {
+                "name": "Property Registration & Stamp Duty",
+                "description": "Conveyance deed clearance and official revenue verification",
+                "counters": [
+                    {"name": "Registry Desk 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Registry Desk 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 11,
+                    "durations": [300, 330, 310, 320, 290, 340],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Gurugram",
+        "state": "Haryana",
+        "name": "Cyber City Express Bistro",
+        "category": LocationCategory.RESTAURANT,
+        "address": "DLF Cyber City, Building 10, Gurugram, Haryana 122002",
+        "latitude": 28.4950,
+        "longitude": 77.0895,
+        "services": [
+            {
+                "name": "Table Waiting & Host Desk",
+                "description": "Lunch seating queue allocation and dining room assignment",
+                "counters": [
+                    {"name": "Host Station", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "long",
+                    "waiting_count": 6,
+                    "durations": [1200, 1350, 1260, 1400],
+                },
+            },
+            {
+                "name": "Takeaway Parcel Window",
+                "description": "Corporate boxed lunch takeaway and quick pickup clearance",
+                "counters": [
+                    {"name": "Pickup 1", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 4,
+                    "durations": [180, 200, 190, 210],
+                },
+            },
+        ],
+    },
+    # --- NOIDA (Uttar Pradesh) ---
+    {
+        "city": "Noida",
+        "state": "Uttar Pradesh",
+        "name": "Noida Authority Administrative Complex Sector 6",
+        "category": LocationCategory.MUNICIPAL_SERVICE_CENTRE,
+        "address": "Sector 6, Noida, Gautam Buddha Nagar, Uttar Pradesh 201301",
+        "latitude": 28.5901,
+        "longitude": 77.3195,
+        "services": [
+            {
+                "name": "Citizen Utility Clearance Desk",
+                "description": "Water connection, sewerage clearance, and municipal dues window",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 7,
+                    "durations": [180, 210, 195, 200, 215],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Noida",
+        "state": "Uttar Pradesh",
+        "name": "Sharda University Administrative Block",
+        "category": LocationCategory.UNIVERSITY,
+        "address": "Plot No. 32-34, Knowledge Park III, Greater Noida, Uttar Pradesh 201306",
+        "latitude": 28.4727,
+        "longitude": 77.4883,
+        "services": [
+            {
+                "name": "Admission Counseling Queue",
+                "description": "New undergraduate registration and seat allocation interview",
+                "counters": [
+                    {"name": "Counseling Desk 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counseling Desk 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 9,
+                    "durations": [400, 430, 410, 440, 420],
+                },
+            },
+        ],
+    },
+    # --- SURAT (Gujarat) ---
+    {
+        "city": "Surat",
+        "state": "Gujarat",
+        "name": "Surat Municipal Corporation (SMC Muglisara)",
+        "category": LocationCategory.MUNICIPAL_SERVICE_CENTRE,
+        "address": "Muglisara, Surat, Gujarat 395003",
+        "latitude": 21.1994,
+        "longitude": 72.8223,
+        "services": [
+            {
+                "name": "Water Tax & Drainage Clearance Desk",
+                "description": "Civic utility assessment and drainage grievance settlement",
+                "counters": [
+                    {"name": "Window 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Window 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 6,
+                    "durations": [150, 180, 165, 175, 160],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Surat",
+        "state": "Gujarat",
+        "name": "New Civil Hospital Surat",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Majura Gate, Surat, Gujarat 395001",
+        "latitude": 21.1738,
+        "longitude": 72.8184,
+        "services": [
+            {
+                "name": "General Medicine OPD Registration",
+                "description": "Government healthcare OPD token allocation",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 16,
+                    "durations": [140, 160, 150, 155, 145, 165, 150],
+                },
+            },
+        ],
+    },
+    # --- NAGPUR (Maharashtra) ---
+    {
+        "city": "Nagpur",
+        "state": "Maharashtra",
+        "name": "Government Medical College and Hospital (GMCH Nagpur)",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Medical Square, Hanuman Nagar, Nagpur, Maharashtra 440003",
+        "latitude": 21.1275,
+        "longitude": 79.0984,
+        "services": [
+            {
+                "name": "Super-Specialty OPD Desk",
+                "description": "Cardiology, neurology, and nephrology consultation token window",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 14,
+                    "durations": [200, 220, 210, 215, 205, 230],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Nagpur",
+        "state": "Maharashtra",
+        "name": "Nagpur City RTO (MH-31 Giripeth)",
+        "category": LocationCategory.RTO,
+        "address": "Civil Lines, Giripeth, Nagpur, Maharashtra 440001",
+        "latitude": 21.1504,
+        "longitude": 79.0707,
+        "services": [
+            {
+                "name": "Driving Licence Smart Card Issuance",
+                "description": "Permanent DL biometric verification and token queue",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 12,
+                    "durations": [160, 180, 170, 175, 165, 190],
+                },
+            },
+        ],
+    },
+    # --- INDORE (Madhya Pradesh) ---
+    {
+        "city": "Indore",
+        "state": "Madhya Pradesh",
+        "name": "Maharaja Yeshwantrao Hospital (MYH Indore)",
+        "category": LocationCategory.HOSPITAL,
+        "address": "MY Hospital Road, Sanyogitaganj, Indore, Madhya Pradesh 452001",
+        "latitude": 22.7164,
+        "longitude": 75.8778,
+        "services": [
+            {
+                "name": "Central OPD Registration Token",
+                "description": "Outpatient clinic registration and physician room allotment",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "long",
+                    "waiting_count": 18,
+                    "durations": [150, 170, 160, 165, 155, 175, 160],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Indore",
+        "state": "Madhya Pradesh",
+        "name": "Indore Municipal Corporation (IMC Head Office)",
+        "category": LocationCategory.MUNICIPAL_SERVICE_CENTRE,
+        "address": "Narayan Singhania Marg, Shivaji Market, Indore, Madhya Pradesh 452007",
+        "latitude": 22.7196,
+        "longitude": 75.8577,
+        "services": [
+            {
+                "name": "Property Tax & Billing Counter",
+                "description": "Civic assessment, property tax clearance, and garbage cess desk",
+                "counters": [
+                    {"name": "Window 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Window 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 9,
+                    "durations": [190, 210, 200, 215, 195],
+                },
+            },
+        ],
+    },
+    # --- KOCHI (Kerala) ---
+    {
+        "city": "Kochi",
+        "state": "Kerala",
+        "name": "Ernakulam General Hospital",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Hospital Road, Marine Drive, Kochi, Kerala 682011",
+        "latitude": 9.9723,
+        "longitude": 76.2798,
+        "services": [
+            {
+                "name": "Outpatient Token Desk",
+                "description": "Electronic OP token queue for physician consultation",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 13,
+                    "durations": [160, 175, 170, 165, 180, 170],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Kochi",
+        "state": "Kerala",
+        "name": "Grand Cochin Heritage Hotel",
+        "category": LocationCategory.HOTEL,
+        "address": "Bristow Road, Willingdon Island, Kochi, Kerala 682003",
+        "latitude": 9.9575,
+        "longitude": 76.2690,
+        "services": [
+            {
+                "name": "Guest Check-in & Concierge Desk",
+                "description": "Visitor arrival verification, passport check, and key handover",
+                "counters": [
+                    {"name": "Reception Desk 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Reception Desk 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "short",
+                    "waiting_count": 3,
+                    "durations": [300, 360, 330, 345],
+                },
+            },
+        ],
+    },
+    # --- COIMBATORE (Tamil Nadu) ---
+    {
+        "city": "Coimbatore",
+        "state": "Tamil Nadu",
+        "name": "Coimbatore Medical College Hospital",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Trichy Road, Gopalapuram, Coimbatore, Tamil Nadu 641018",
+        "latitude": 11.0016,
+        "longitude": 76.9691,
+        "services": [
+            {
+                "name": "Token Registration Window",
+                "description": "General OPD consultation queue and doctor allocation",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 15,
+                    "durations": [150, 165, 155, 170, 160],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Coimbatore",
+        "state": "Tamil Nadu",
+        "name": "Coimbatore City Municipal Corporation",
+        "category": LocationCategory.MUNICIPAL_SERVICE_CENTRE,
+        "address": "Big Bazaar Street, Town Hall, Coimbatore, Tamil Nadu 641001",
+        "latitude": 10.9967,
+        "longitude": 76.9629,
+        "services": [
+            {
+                "name": "Property Tax Collection Counter",
+                "description": "Urban local body tax payment and receipt generation desk",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 8,
+                    "durations": [180, 200, 190, 210, 185],
+                },
+            },
+        ],
+    },
+    # --- CHANDIGARH (Union Territory) ---
+    {
+        "city": "Chandigarh",
+        "state": "Chandigarh",
+        "name": "Post Graduate Institute of Medical Education and Research (PGIMER)",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Madhya Marg, Sector 12, Chandigarh 160012",
+        "latitude": 30.7656,
+        "longitude": 76.7744,
+        "services": [
+            {
+                "name": "Nehru Hospital Central OPD Token",
+                "description": "Multi-specialty tertiary healthcare outpatient queue desk",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 3", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "long",
+                    "waiting_count": 25,
+                    "durations": [240, 260, 250, 270, 245, 265, 255],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Chandigarh",
+        "state": "Chandigarh",
+        "name": "Chandigarh Transport Undertaking & RTO Sector 17",
+        "category": LocationCategory.RTO,
+        "address": "ISBT Sector 17, Chandigarh 160017",
+        "latitude": 30.7398,
+        "longitude": 76.7827,
+        "services": [
+            {
+                "name": "Smart Card Driving Licence Counter",
+                "description": "Permanent licence renewal and bio-metric chip encoding",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 8,
+                    "durations": [180, 200, 190, 205, 195],
+                },
+            },
+        ],
+    },
+    # --- VADODARA (Gujarat) ---
+    {
+        "city": "Vadodara",
+        "state": "Gujarat",
+        "name": "Sir Sayajirao General Hospital (SSG Hospital)",
+        "category": LocationCategory.HOSPITAL,
+        "address": "Jail Road, Indira Avenue, Vadodara, Gujarat 390001",
+        "latitude": 22.3106,
+        "longitude": 73.1926,
+        "services": [
+            {
+                "name": "Medicine OPD Consultation Token",
+                "description": "Tertiary hospital general clinical registration and consultation",
+                "counters": [
+                    {"name": "Counter 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Counter 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 14,
+                    "durations": [160, 180, 170, 175, 165, 185],
+                },
+            },
+        ],
+    },
+    {
+        "city": "Vadodara",
+        "state": "Gujarat",
+        "name": "Vadodara Jan Seva Kendra (Collector Office)",
+        "category": LocationCategory.PUBLIC_SERVICE_CENTRE,
+        "address": "Kothi Compound, Raopura, Vadodara, Gujarat 390001",
+        "latitude": 22.3025,
+        "longitude": 73.2033,
+        "services": [
+            {
+                "name": "Aadhaar Card & Identity Modification Desk",
+                "description": "Aadhaar biometrics update and civil documentation verification",
+                "counters": [
+                    {"name": "Desk 1", "status": CounterStatus.ACTIVE},
+                    {"name": "Desk 2", "status": CounterStatus.ACTIVE},
+                ],
+                "scenario": {
+                    "type": "moderate",
+                    "waiting_count": 10,
+                    "durations": [240, 270, 255, 260, 245],
+                },
+            },
+        ],
+    },
 ]
 
 
@@ -928,7 +1678,7 @@ async def seed() -> None:
         # 1. Baseline Test Facility (Bhopal AIIMS Central Hospital)
         # ---------------------------------------------------------
         bhopal_stmt = select(Location).where(Location.name == "AIIMS Central Hospital")
-        bhopal_loc = (await session.execute(bhopal_stmt)).scalar_one_or_none()
+        bhopal_loc = (await session.execute(bhopal_stmt)).scalars().first()
         if not bhopal_loc:
             bhopal_loc = Location(
                 name="AIIMS Central Hospital",
@@ -948,7 +1698,7 @@ async def seed() -> None:
         bhopal_svc_stmt = select(Service).where(
             Service.location_id == bhopal_loc.id, Service.name == "OPD General Medicine"
         )
-        bhopal_svc = (await session.execute(bhopal_svc_stmt)).scalar_one_or_none()
+        bhopal_svc = (await session.execute(bhopal_svc_stmt)).scalars().first()
         if not bhopal_svc:
             bhopal_svc = Service(
                 location_id=bhopal_loc.id,
@@ -963,7 +1713,7 @@ async def seed() -> None:
         bhopal_cnt_stmt = select(Counter).where(
             Counter.service_id == bhopal_svc.id, Counter.name == "Counter 1"
         )
-        bhopal_cnt = (await session.execute(bhopal_cnt_stmt)).scalar_one_or_none()
+        bhopal_cnt = (await session.execute(bhopal_cnt_stmt)).scalars().first()
         if not bhopal_cnt:
             bhopal_cnt = Counter(
                 service_id=bhopal_svc.id,
@@ -978,7 +1728,7 @@ async def seed() -> None:
         # 2. Test Users
         # ---------------------------------------------------------
         admin_stmt = select(User).where(User.email == "admin@queless.gov.in")
-        admin = (await session.execute(admin_stmt)).scalar_one_or_none()
+        admin = (await session.execute(admin_stmt)).scalars().first()
         if not admin:
             admin = User(
                 email="admin@queless.gov.in",
@@ -989,9 +1739,12 @@ async def seed() -> None:
             )
             session.add(admin)
             print("Created admin: admin@queless.gov.in")
+        else:
+            admin.hashed_password = get_password_hash("AdminPass123!")
+            admin.full_name = "System Administrator"
 
         op_stmt = select(User).where(User.email == "operator@queless.gov.in")
-        op = (await session.execute(op_stmt)).scalar_one_or_none()
+        op = (await session.execute(op_stmt)).scalars().first()
         if not op:
             op = User(
                 email="operator@queless.gov.in",
@@ -1003,9 +1756,12 @@ async def seed() -> None:
             )
             session.add(op)
             print("Created operator: operator@queless.gov.in")
+        else:
+            op.hashed_password = get_password_hash("OperatorPass123!")
+            op.full_name = "Desk Operator Rajesh"
 
         cit_stmt = select(User).where(User.email == "citizen@queless.gov.in")
-        cit = (await session.execute(cit_stmt)).scalar_one_or_none()
+        cit = (await session.execute(cit_stmt)).scalars().first()
         if not cit:
             cit = User(
                 email="citizen@queless.gov.in",
@@ -1016,16 +1772,35 @@ async def seed() -> None:
             )
             session.add(cit)
             print("Created citizen: citizen@queless.gov.in")
+        else:
+            cit.hashed_password = get_password_hash("CitizenPass123!")
+            cit.full_name = "Citizen Amit Sharma"
+
+        await session.flush()
+        ident_stmt = select(UserIdentity).where(
+            UserIdentity.provider == "google",
+            UserIdentity.provider_subject == "google-sub-seed-citizen",
+        )
+        ident = (await session.execute(ident_stmt)).scalars().first()
+        if not ident:
+            ident = UserIdentity(
+                user_id=cit.id,
+                provider="google",
+                provider_subject="google-sub-seed-citizen",
+                provider_email="citizen@queless.gov.in",
+            )
+            session.add(ident)
+            print("Linked Google identity for citizen: citizen@queless.gov.in")
 
         # ---------------------------------------------------------
-        # 3. India Demo Facility Dataset (M6.1 — 8 Initial Cities)
+        # 3. India Demo Facility Dataset (M6.1.2 — 20 Urban Markets)
         # ---------------------------------------------------------
-        print("Populating India demo facilities across 8 cities...")
+        print("Populating India demo facilities across 20 cities...")
         for spec in FACILITY_SPECS:
             loc_stmt = select(Location).where(
                 Location.city == spec["city"], Location.name == spec["name"]
             )
-            loc = (await session.execute(loc_stmt)).scalar_one_or_none()
+            loc = (await session.execute(loc_stmt)).scalars().first()
             if not loc:
                 loc = Location(
                     name=spec["name"],
@@ -1048,7 +1823,7 @@ async def seed() -> None:
                 svc_stmt = select(Service).where(
                     Service.location_id == loc.id, Service.name == svc_spec["name"]
                 )
-                svc = (await session.execute(svc_stmt)).scalar_one_or_none()
+                svc = (await session.execute(svc_stmt)).scalars().first()
                 if not svc:
                     svc = Service(
                         location_id=loc.id,
@@ -1065,7 +1840,7 @@ async def seed() -> None:
                     cnt_stmt = select(Counter).where(
                         Counter.service_id == svc.id, Counter.name == cnt_spec["name"]
                     )
-                    cnt = (await session.execute(cnt_stmt)).scalar_one_or_none()
+                    cnt = (await session.execute(cnt_stmt)).scalars().first()
                     if not cnt:
                         cnt = Counter(
                             service_id=svc.id,

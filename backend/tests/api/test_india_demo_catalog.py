@@ -143,14 +143,26 @@ class TestIndiaDemoCatalogAPI:
         cities = cities_resp.json()
 
         expected_cities = [
+            "Ahmedabad",
             "Bengaluru",
+            "Chandigarh",
             "Chennai",
+            "Coimbatore",
             "Delhi",
+            "Gurugram",
+            "Hyderabad",
+            "Indore",
+            "Jaipur",
+            "Kochi",
             "Kolkata",
             "Lucknow",
             "Mumbai",
+            "Nagpur",
+            "Noida",
             "Patna",
             "Pune",
+            "Surat",
+            "Vadodara",
         ]
         for c in expected_cities:
             assert c in cities, f"City {c} missing from cities endpoint"
@@ -159,11 +171,12 @@ class TestIndiaDemoCatalogAPI:
         pune_resp = await client.get("/api/v1/locations?city=Pune")
         assert pune_resp.status_code == 200
         pune_facilities = pune_resp.json()
-        assert len(pune_facilities) == 3
+        assert len(pune_facilities) == 4
         pune_names = {f["name"] for f in pune_facilities}
         assert "Pune Regional Transport Office (MH-12 RTO)" in pune_names
         assert "Sassoon General Hospital" in pune_names
         assert "Pune Municipal Corporation (PMC Main Building)" in pune_names
+        assert "Fergusson College Campus Office" in pune_names
 
         # 3. Verify Pune RTO scenarios: Driving Licence Renewal (Moderate Queue)
         rto_fac = next(f for f in pune_facilities if "MH-12 RTO" in f["name"])

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -43,8 +44,7 @@ class Location(Base):
     __tablename__ = "locations"
     __table_args__ = (
         CheckConstraint(
-            f"category IN ('{LocationCategory.HOSPITAL}', '{LocationCategory.RTO}', "
-            f"'{LocationCategory.GOVERNMENT_OFFICE}')",
+            f"category IN ({', '.join(repr(c.value) for c in LocationCategory)})",
             name="chk_locations_category",
         ),
         CheckConstraint(
@@ -169,7 +169,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default=UserRole.CITIZEN)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     assigned_service_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -189,6 +189,38 @@ class User(Base):
     queue_sessions: Mapped[list["QueueSession"]] = relationship(
         "QueueSession", back_populates="user"
     )
+    identities: Mapped[list["UserIdentity"]] = relationship(
+        "UserIdentity", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserIdentity(Base):
+    """Federated external identity provider mapping (e.g., Google OpenID Connect)."""
+
+    __tablename__ = "user_identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_subject", name="uq_user_identities_provider_sub"),
+        Index("ix_user_identities_provider_sub", "provider", "provider_subject"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    provider_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="identities")
 
 
 class QueueSession(Base):
