@@ -6,10 +6,13 @@ from unittest.mock import patch
 import httpx
 import pytest
 from google.auth.exceptions import TransportError
+from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import async_session_factory
 from app.domain.enums import UserRole
+from app.domain.exceptions import DomainError
+from app.domain.models import User, UserIdentity
 from app.services.auth_service import AuthService
 
 TEST_CLIENT_ID = "test-google-client-id.apps.googleusercontent.com"
@@ -226,6 +229,27 @@ class TestGoogleCitizenAuthentication:
         assert resp.status_code == 403
         assert "staff accounts must sign in via the staff portal" in resp.json()["detail"].lower()
 
+    async def test_admin_staff_account_cannot_login_via_google_citizen(
+        self, client: httpx.AsyncClient, make_user
+    ):
+        """Verifies ADMIN staff accounts cannot login via citizen Google endpoint."""
+        await make_user("admin.super@queless.gov.in", role=UserRole.ADMIN)
+
+        payload = _mock_google_payload(
+            sub="google-sub-admin-hacker",
+            email="admin.super@queless.gov.in",
+            name="Admin Super",
+        )
+
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+            resp = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "admin.spoofed.token"},
+            )
+
+        assert resp.status_code == 403
+        assert "staff accounts must sign in via the staff portal" in resp.json()["detail"].lower()
+
     async def test_email_collision_does_not_silently_link_password_account(
         self, client: httpx.AsyncClient, make_user
     ):
@@ -285,9 +309,11 @@ class TestGoogleCitizenAuthentication:
 
     async def test_concurrent_first_signins_prevent_duplicate_accounts(self):
         """Verifies concurrent first sign-ins resolve cleanly without duplicates or crashes."""
+        email = "concurrent.citizen@example.com"
+        sub = "google-sub-concurrent-test"
         payload = _mock_google_payload(
-            sub="google-sub-concurrent-test",
-            email="concurrent.citizen@example.com",
+            sub=sub,
+            email=email,
             name="Concurrent Citizen",
         )
 
@@ -297,15 +323,100 @@ class TestGoogleCitizenAuthentication:
                 with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
                     return await svc.authenticate_google_user("dummy.id.token")
 
-        # Launch two workers concurrently
-        res1, res2 = await asyncio.gather(sign_in_worker(), sign_in_worker())
+        # Launch 5 workers concurrently to stress race conditions
+        results = await asyncio.gather(*[sign_in_worker() for _ in range(5)])
 
-        user1, token1 = res1
-        user2, token2 = res2
+        first_user_id = results[0][0].id
+        for user, token in results:
+            assert user.id == first_user_id
+            assert user.role == UserRole.CITIZEN
+            assert token is not None
 
-        # Both must resolve to the identical user ID and CITIZEN role
-        assert user1.id == user2.id
-        assert user1.role == UserRole.CITIZEN
-        assert user2.role == UserRole.CITIZEN
-        assert token1 is not None
-        assert token2 is not None
+        # Confirm exactly 1 user row and 1 user_identity row exist in database
+        async with async_session_factory() as session:
+            users = (await session.execute(select(User).where(User.email == email))).scalars().all()
+            identities = (
+                (
+                    await session.execute(
+                        select(UserIdentity).where(
+                            UserIdentity.provider == "google",
+                            UserIdentity.provider_subject == sub,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(users) == 1
+            assert len(identities) == 1
+            assert identities[0].user_id == first_user_id
+
+    async def test_distinct_google_subjects_same_email_rejected(self, client: httpx.AsyncClient):
+        """Verifies two different Google subjects attempting to use the same email are rejected."""
+        email = "shared.identity@example.com"
+
+        # User A signs in first with Google sub-A
+        payload_a = _mock_google_payload(
+            sub="google-sub-user-a",
+            email=email,
+            name="User Alpha",
+        )
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_a):
+            resp_a = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "token.user.a"},
+            )
+        assert resp_a.status_code == 200
+
+        # User B attempts to sign in with Google sub-B but same email
+        payload_b = _mock_google_payload(
+            sub="google-sub-user-b",
+            email=email,
+            name="User Beta Impersonator",
+        )
+        with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_b):
+            resp_b = await client.post(
+                "/api/v1/auth/google",
+                json={"id_token": "token.user.b"},
+            )
+
+        assert resp_b.status_code == 409
+        assert "silent account linking is disabled" in resp_b.json()["detail"].lower()
+
+    async def test_concurrent_distinct_google_subjects_same_email_rejected(self):
+        """Verifies concurrent first sign-ins with different Google subjects on the same
+        email safely reject the second sign-in.
+        """
+        email = "concurrent.distinct.subs@example.com"
+
+        payload_a = _mock_google_payload(
+            sub="google-sub-distinct-alpha",
+            email=email,
+            name="Alpha User",
+        )
+        payload_b = _mock_google_payload(
+            sub="google-sub-distinct-beta",
+            email=email,
+            name="Beta User",
+        )
+
+        async def sign_in_worker(payload: dict):
+            async with async_session_factory() as session:
+                svc = AuthService(session)
+                with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+                    return await svc.authenticate_google_user("dummy.id.token")
+
+        results = await asyncio.gather(
+            sign_in_worker(payload_a),
+            sign_in_worker(payload_b),
+            return_exceptions=True,
+        )
+
+        # Exactly one must succeed and one must fail with DomainError
+        successes = [r for r in results if not isinstance(r, Exception)]
+        failures = [r for r in results if isinstance(r, Exception)]
+
+        assert len(successes) == 1
+        assert len(failures) == 1
+        assert isinstance(failures[0], DomainError)
+        assert "silent account linking is disabled" in str(failures[0]).lower()
