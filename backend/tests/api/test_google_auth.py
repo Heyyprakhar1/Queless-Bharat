@@ -310,7 +310,9 @@ class TestGoogleCitizenAuthentication:
     async def test_google_config_endpoint_when_disabled(
         self, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
     ):
-        """Verifies GET /api/v1/auth/google/config safely returns enabled=False and client_id=None when disabled."""
+        """Verifies GET /api/v1/auth/google/config safely returns
+        enabled=False and client_id=None when disabled.
+        """
         settings = get_settings()
         monkeypatch.setattr(settings, "GOOGLE_AUTH_ENABLED", False)
         resp = await client.get("/api/v1/auth/google/config")
