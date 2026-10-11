@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useLanguage } from '../i18n'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { Alert, Button } from './ui'
 
@@ -45,6 +46,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   authError,
   onClearAuthError,
 }) => {
+  const { t } = useLanguage()
+
   if (!isOpen) return null
 
   return (
@@ -54,9 +57,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       aria-labelledby="auth-modal-title"
       className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
     >
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 max-w-md w-full p-6 space-y-5">
-        {/* Header Tabs */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-800 max-w-md w-full overflow-hidden text-slate-900 dark:text-slate-100">
+        <div className="civic-tricolour-hairline" />
+        <div className="p-6 space-y-5">
+          {/* Header Tabs */}
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex space-x-2 sm:space-x-4">
             <button
               id="tab-citizen"
@@ -67,11 +72,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'citizen'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400'
+                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               }`}
             >
-              Citizen Access
+              {t('authModal.citizenAccessTab')}
             </button>
             <button
               id="tab-login"
@@ -82,11 +87,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'staff'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400'
+                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               }`}
             >
-              Staff Portal
+              {t('authModal.staffPortalTab')}
             </button>
             <button
               id="tab-register"
@@ -97,18 +102,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`text-xs sm:text-sm font-bold pb-1 cursor-pointer transition ${
                 activeTab === 'register'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400'
+                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               }`}
             >
-              Password Register
+              {t('authModal.passwordRegisterTab')}
             </button>
           </div>
           <button
             id="btn-close-modal"
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 font-bold text-xl cursor-pointer p-1"
+            className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 font-bold text-xl cursor-pointer p-1"
             aria-label="Close dialog"
           >
             &times;
@@ -120,7 +125,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <Alert
             id="auth-error-msg"
             variant="error"
-            title="Authentication Notice"
+            title={t('authModal.authNotice')}
             onClose={onClearAuthError}
           >
             {authError}
@@ -130,13 +135,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* TAB 1: GOOGLE CITIZEN IDENTITY VERIFICATION */}
         {activeTab === 'citizen' && (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 space-y-1">
+            <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
               <div className="font-bold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block" />
-                Verified Citizen Entry
+                <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 inline-block" />
+                {t('authModal.verifiedCitizenEntry')}
               </div>
-              <p className="text-slate-600 leading-relaxed">
-                Sign in with Google to issue, track, and manage your civic queue tokens. QueueLess verifies your identity through Google OpenID Connect to prevent impersonation and spot-hoarding.
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                {t('authModal.verifiedCitizenEntryDesc')}
               </p>
             </div>
 
@@ -152,8 +157,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               />
             </div>
 
-            <div className="pt-2 text-center text-[11px] text-slate-400">
-              Only standard OpenID profile and email scopes are requested.
+            <div className="pt-2 text-center text-[11px] text-slate-400 dark:text-slate-500">
+              {t('authModal.openIdScopeNote')}
             </div>
           </div>
         )}
@@ -161,16 +166,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* TAB 2: STAFF PORTAL (EMAIL + PASSWORD, BACKEND ROLE DERIVATION) */}
         {activeTab === 'staff' && (
           <form onSubmit={onSubmitStaffLogin} className="space-y-4">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
-              <span className="font-bold text-slate-900">Staff Portal:</span> For counter operators and system administrators. Enter assigned credentials. Permissions are verified strictly by the backend.
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
+              {t('authModal.staffPortalNotice')}
             </div>
 
             <div>
               <label
                 htmlFor="input-login-email"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Staff Work Email
+                {t('authModal.staffEmailLabel')}
               </label>
               <input
                 id="input-login-email"
@@ -179,16 +184,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="operator@queless.gov.in"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
               <label
                 htmlFor="input-login-password"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Password
+                {t('authModal.passwordLabel')}
               </label>
               <input
                 id="input-login-password"
@@ -197,7 +202,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -208,10 +213,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               size="md"
               disabled={authLoading}
               isLoading={authLoading}
-              loadingText="Signing in..."
+              loadingText={t('authModal.signingIn')}
               className="w-full justify-center"
             >
-              Sign In to Staff Portal
+              {t('authModal.signInStaffBtn')}
             </Button>
           </form>
         )}
@@ -219,16 +224,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* TAB 3: CITIZEN PASSWORD REGISTRATION (SECONDARY) */}
         {activeTab === 'register' && (
           <form onSubmit={onSubmitRegister} className="space-y-4">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-              Password account registration is strictly unprivileged (<span className="font-semibold text-slate-800">CITIZEN role only</span>).
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+              {t('authModal.passwordRegisterNotice')}
             </div>
 
             <div>
               <label
                 htmlFor="input-register-name"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Full Name
+                {t('authModal.fullNameLabel')}
               </label>
               <input
                 id="input-register-name"
@@ -237,16 +242,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={authFullName}
                 onChange={(e) => setAuthFullName(e.target.value)}
                 placeholder="e.g. Priya Patel"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
               <label
                 htmlFor="input-register-email"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Email Address
+                {t('authModal.emailAddressLabel')}
               </label>
               <input
                 id="input-register-email"
@@ -255,16 +260,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="priya@example.com"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
               <label
                 htmlFor="input-register-password"
-                className="block text-xs font-semibold text-slate-700 mb-1"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Password (min 8 chars)
+                {t('authModal.passwordMinChars')}
               </label>
               <input
                 id="input-register-password"
@@ -274,7 +279,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -285,13 +290,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               size="md"
               disabled={authLoading}
               isLoading={authLoading}
-              loadingText="Creating account..."
+              loadingText={t('authModal.creatingAccount')}
               className="w-full justify-center"
             >
-              Create Account
+              {t('authModal.createAccountBtn')}
             </Button>
           </form>
         )}
+        </div>
       </div>
     </div>
   )

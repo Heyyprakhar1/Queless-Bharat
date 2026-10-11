@@ -151,49 +151,77 @@ class AuthService:
             if existing_user:
                 if existing_user.role != UserRole.CITIZEN:
                     raise DomainError("Staff accounts must sign in via the Staff Portal.")
-                # Safe account-linking rule: do not silently link an existing password account
-                raise DomainError(
-                    f"An existing account with email '{email}' already exists. "
-                    "Silent account linking is disabled for security."
-                )
 
-            # 3. Create new CITIZEN user and link federated identity with concurrency handling
-            try:
-                user = User(
-                    email=email,
-                    full_name=full_name,
-                    hashed_password=None,  # No password for Google-authenticated users
-                    role=UserRole.CITIZEN,
-                    is_active=True,
-                    assigned_service_id=None,
+                # Concurrency check: check if a concurrent request already linked
+                # this exact Google identity
+                matching_ident_stmt = select(UserIdentity).where(
+                    UserIdentity.user_id == existing_user.id,
+                    UserIdentity.provider == "google",
+                    UserIdentity.provider_subject == sub,
                 )
-                self.session.add(user)
-                await self.session.flush()
+                matching_identity = (
+                    await self.session.execute(matching_ident_stmt)
+                ).scalar_one_or_none()
 
-                identity = UserIdentity(
-                    user_id=user.id,
-                    provider="google",
-                    provider_subject=sub,
-                    provider_email=email,
-                )
-                self.session.add(identity)
-                await self.session.commit()
-                await self.session.refresh(user)
-            except IntegrityError as exc:
-                await self.session.rollback()
-                # Concurrency race: another request created the identity or email concurrently
-                retry_stmt = select(UserIdentity).where(
-                    UserIdentity.provider == "google", UserIdentity.provider_subject == sub
-                )
-                retry_identity = (await self.session.execute(retry_stmt)).scalar_one_or_none()
-                if retry_identity:
-                    user = await self.get_user_by_id(retry_identity.user_id)
-                    if not user or not user.is_active or user.role != UserRole.CITIZEN:
-                        raise DomainError(
-                            "Authentication failed during identity resolution."
-                        ) from exc
+                if matching_identity:
+                    # Concurrently created by identical Google identity
+                    user = existing_user
+                    if not user.is_active:
+                        raise DomainError("Account is inactive")
+                    if matching_identity.provider_email != email:
+                        matching_identity.provider_email = email
+                    if full_name and user.full_name != full_name:
+                        user.full_name = full_name
+                    await self.session.commit()
+                    await self.session.refresh(user)
                 else:
-                    raise DomainError("Account creation conflict during Google sign-in.") from exc
+                    # Safe account-linking rule: do not silently link an existing password account
+                    # or an account belonging to a different external identity
+                    raise DomainError(
+                        f"An existing account with email '{email}' already exists. "
+                        "Silent account linking is disabled for security."
+                    )
+            else:
+                # 3. Create new CITIZEN user and link federated identity with concurrency handling
+                try:
+                    user = User(
+                        email=email,
+                        full_name=full_name,
+                        hashed_password=None,  # No password for Google-authenticated users
+                        role=UserRole.CITIZEN,
+                        is_active=True,
+                        assigned_service_id=None,
+                    )
+                    self.session.add(user)
+                    await self.session.flush()
+
+                    identity = UserIdentity(
+                        user_id=user.id,
+                        provider="google",
+                        provider_subject=sub,
+                        provider_email=email,
+                    )
+                    self.session.add(identity)
+                    await self.session.commit()
+                    await self.session.refresh(user)
+                except IntegrityError as exc:
+                    await self.session.rollback()
+                    # Concurrency race: another request created the identity or email concurrently
+                    retry_stmt = select(UserIdentity).where(
+                        UserIdentity.provider == "google", UserIdentity.provider_subject == sub
+                    )
+                    retry_identity = (await self.session.execute(retry_stmt)).scalar_one_or_none()
+                    if retry_identity:
+                        user = await self.get_user_by_id(retry_identity.user_id)
+                        if not user or not user.is_active or user.role != UserRole.CITIZEN:
+                            raise DomainError(
+                                "Authentication failed during identity resolution."
+                            ) from exc
+                    else:
+                        raise DomainError(
+                            f"An existing account with email '{email}' already exists. "
+                            "Silent account linking is disabled for security."
+                        ) from exc
 
         token = create_access_token(
             subject=str(user.id),

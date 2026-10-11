@@ -27,13 +27,20 @@ import {
 import {
   AdminWorkspace,
   AuthModal,
+  ChakraWatermark,
   CitizenTokenDesk,
   Footer,
   Header,
   HealthPanel,
   IndiaDemoExplorer,
+  IndianFlag,
   OperatorDesk,
+  Sidebar,
+  TricolourWatermarkFlow,
 } from './components'
+import type { SidebarTab } from './components/Sidebar'
+import { ThemeProvider } from './context/ThemeContext'
+import { LanguageProvider, useLanguage } from './i18n'
 import type { User } from './types/auth'
 import type { HealthResponse } from './types/health'
 import type {
@@ -43,7 +50,8 @@ import type {
   UserQueueStatusResponse,
 } from './types/queue'
 
-export function App() {
+function AppContent() {
+  const { t } = useLanguage()
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [healthLoading, setHealthLoading] = useState<boolean>(true)
   const [healthError, setHealthError] = useState<string | null>(null)
@@ -90,6 +98,7 @@ export function App() {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null)
   const [operatorMessage, setOperatorMessage] = useState<string | null>(null)
   const [operatorIsError, setOperatorIsError] = useState<boolean>(false)
+  const [activeNav, setActiveNav] = useState<SidebarTab>('findServices')
 
   // Validate session on load
   useEffect(() => {
@@ -166,9 +175,17 @@ export function App() {
     initCities()
     checkHealth()
     loadGlobalCatalog()
-    fetchGoogleAuthConfig().then((cfg) => {
-      if (cfg.client_id) setGoogleClientId(cfg.client_id)
-    })
+    fetchGoogleAuthConfig()
+      .then((cfg) => {
+        if (cfg.enabled && cfg.client_id) {
+          setGoogleClientId(cfg.client_id)
+        } else if (!cfg.enabled) {
+          setGoogleClientId(null)
+        }
+      })
+      .catch(() => {
+        setGoogleClientId(null)
+      })
     const interval = setInterval(checkHealth, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -512,182 +529,256 @@ export function App() {
   const isHealthy = health?.status === 'ok' && health?.database === 'connected'
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
-      {/* Header */}
-      <Header
-        isHealthy={isHealthy}
-        currentUser={currentUser}
-        currentWorkspace={currentWorkspace}
-        onSelectWorkspace={setCurrentWorkspace}
-        onLogout={handleLogout}
-        onOpenCitizenAccess={() => {
-          setAuthTab('citizen')
-          setAuthError(null)
-          setShowAuthModal(true)
-        }}
-        onOpenStaffPortal={() => {
-          setAuthTab('staff')
-          setAuthError(null)
-          setShowAuthModal(true)
-        }}
-      />
+    <div className="min-h-screen civic-tricolour-mesh relative overflow-x-hidden text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-150 py-4 px-3 sm:px-6 lg:px-8 space-y-6">
+      {/* Subtle Ambient Indian Tricolour Flow & Chakra Watermark */}
+      <div className="absolute top-0 left-0 right-0 pointer-events-none select-none z-0 overflow-hidden">
+        <TricolourWatermarkFlow className="w-full h-44 opacity-80" />
+      </div>
+      <div className="absolute top-4 right-4 lg:right-24 pointer-events-none select-none z-0 overflow-hidden">
+        <ChakraWatermark className="w-72 h-72 sm:w-96 sm:h-96 lg:w-[460px] lg:h-[460px] text-blue-950/[0.035] dark:text-blue-300/[0.025]" />
+      </div>
 
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
-        {/* If Staff Workspace is active and User is Admin */}
-        {currentWorkspace === 'staff' && currentUser?.role === 'ADMIN' ? (
-          <AdminWorkspace
-            currentUser={currentUser}
-            cities={cities}
-            facilities={facilities}
-            selectedCity={selectedCity}
-            onSelectCity={setSelectedCity}
-            onRefreshData={() => {
-              checkHealth()
-              loadGlobalCatalog()
-            }}
-          />
-        ) : currentWorkspace === 'staff' && currentUser?.role === 'OPERATOR' ? (
-          /* Standalone Operator Workspace Shell */
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h2 className="text-xl font-black text-slate-900">
-                    Desk Operator Workspace
-                  </h2>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                    OPERATOR ACTIVE
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Counter intake, citizen queue advancement, and empirical throughput recording.
-                </p>
-              </div>
-
-              <div className="text-xs text-slate-600">
-                Staff Account: <strong>{currentUser.full_name || currentUser.email}</strong>
-              </div>
+      {/* 1. TOP GLOBAL BRAND HERO HEADER */}
+      <header className="max-w-[1440px] mx-auto w-full space-y-3 relative z-10">
+        {/* Brand Bar: Wordmark, Indian Flag, Tagline & 4 Value Propositions */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-1">
+          <div>
+            <div className="flex items-center space-x-3">
+              <span className="font-serif font-black text-2xl sm:text-3xl text-slate-950 dark:text-white tracking-tight">
+                QueueLess Bharat
+              </span>
+              <IndianFlag className="w-7 h-4.5 rounded-xs shadow-2xs border border-slate-200 dark:border-slate-700" />
             </div>
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
+              {t('brand.tagline')}
+            </p>
+          </div>
 
-            {userStatus ? (
-              <OperatorDesk
+          {/* 4 Compact Value Propositions on desktop */}
+          <div className="hidden lg:flex items-center space-x-2.5 text-xs">
+            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              <span className="font-semibold">{t('brand.valuePropKnowBefore')}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              <span className="font-semibold">{t('brand.valuePropPlannedVisits')}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              <span className="font-semibold">{t('brand.valuePropBetterCitizen')}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              <span className="font-semibold">{t('brand.valuePropAcrossIndia')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Editorial Subtitle & Simulation Notice */}
+        <div className="space-y-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+            {t('hero.title')}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 italic">
+            {t('hero.subtitle')}
+          </p>
+
+          <div
+            id="simulation-notice-banner"
+            className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs flex items-center space-x-2 text-left"
+          >
+            <span className="font-extrabold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px] tracking-wider uppercase shrink-0">
+              {t('hero.simulatedBadge')}
+            </span>
+            <span>
+              {t('hero.simulatedNotice')}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. ROUNDED APPLICATION CONTAINER SHELL */}
+      <div className="max-w-[1440px] mx-auto w-full bg-white dark:bg-slate-900 rounded-2xl lg:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col relative z-10">
+        <div className="civic-tricolour-hairline" />
+        {/* Application Header inside container frame */}
+        <Header
+          isHealthy={isHealthy}
+          currentUser={currentUser}
+          currentWorkspace={currentWorkspace}
+          onSelectWorkspace={setCurrentWorkspace}
+          onLogout={handleLogout}
+          onOpenCitizenAccess={() => {
+            setAuthTab('citizen')
+            setAuthError(null)
+            setShowAuthModal(true)
+          }}
+          onOpenStaffPortal={() => {
+            setAuthTab('staff')
+            setAuthError(null)
+            setShowAuthModal(true)
+          }}
+        />
+
+        {/* Body */}
+        {currentWorkspace === 'staff' ? (
+          <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+            {currentUser?.role === 'ADMIN' ? (
+              <AdminWorkspace
                 currentUser={currentUser}
-                userStatus={userStatus}
-                citizenLoading={citizenLoading}
-                operatorMessage={operatorMessage}
-                operatorIsError={operatorIsError}
-                onStartService={handleOperatorStart}
-                onCompleteService={handleOperatorComplete}
-                onRefreshStatus={() => loadUserStatus(activeSessionId)}
+                cities={cities}
+                facilities={facilities}
+                selectedCity={selectedCity}
+                onSelectCity={setSelectedCity}
+                onRefreshData={() => {
+                  checkHealth()
+                  loadGlobalCatalog()
+                }}
               />
             ) : (
-              <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 space-y-2">
-                <p>No active participant currently seated at this desk.</p>
-                <p className="text-xs text-slate-400">
-                  Switch to the Citizen Portal tab to issue a test token or observe queue intake.
-                </p>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
+                        {t('operator.workspaceHeading')}
+                      </h2>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                        {t('operator.operatorActive')}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      {t('operator.workspaceDesc')}
+                    </p>
+                  </div>
+
+                  <div className="text-xs text-slate-600 dark:text-slate-300">
+                    {t('operator.staffAccount')} <strong>{currentUser?.full_name || currentUser?.email}</strong>
+                  </div>
+                </div>
+
+                {userStatus ? (
+                  <OperatorDesk
+                    currentUser={currentUser}
+                    userStatus={userStatus}
+                    citizenLoading={citizenLoading}
+                    operatorMessage={operatorMessage}
+                    operatorIsError={operatorIsError}
+                    onStartService={handleOperatorStart}
+                    onCompleteService={handleOperatorComplete}
+                    onRefreshStatus={() => loadUserStatus(activeSessionId)}
+                  />
+                ) : (
+                  <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 space-y-2">
+                    <p>{t('operator.noParticipantTitle')}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {t('operator.noParticipantDesc')}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </main>
         ) : (
-          /* CITIZEN PORTAL (Default view for Public Citizens and Demo Observers) */
-          <>
-            {/* Hero Section */}
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-                Predictable Waiting for Public Services Across India
-              </h1>
-              <p className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto">
-                <em>&ldquo;Making waiting more predictable, not pretending queues don&apos;t exist.&rdquo;</em>
-              </p>
+          /* 3-Column Citizen Experience on desktop */
+          <main className="flex-1 flex flex-col lg:flex-row">
+            {/* Column 1: Left Navigation Sidebar */}
+            <Sidebar
+              activeTab={activeNav}
+              onSelectTab={setActiveNav}
+              activeTokenCount={activeSessionId && userStatus ? 1 : 0}
+            />
 
-              {/* Simulation Disclaimer Alert Banner */}
-              <div
-                id="simulation-notice-banner"
-                className="mt-4 p-3.5 max-w-3xl mx-auto rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-center space-x-2 text-center"
-              >
-                <span className="font-extrabold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px] tracking-wider uppercase">
-                  SIMULATED DEMO DATA
-                </span>
-                <span>
-                  All queue sizes, active counters, and throughput sessions shown are <strong>DEMO / SIMULATED DATA</strong> for mathematical algorithmic evaluation. Not live facility telemetry.
-                </span>
-              </div>
+            {/* Column 2: Center Main Citizen Workspace */}
+            <div className="flex-1 min-w-0 border-t lg:border-t-0 lg:border-r border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 lg:p-7 space-y-6">
+              <IndiaDemoExplorer
+                cities={cities}
+                selectedCity={selectedCity}
+                onSelectCity={setSelectedCity}
+                facilities={facilities}
+                selectedFacilityId={selectedFacilityId}
+                onSelectFacility={setSelectedFacilityId}
+                facilityServices={facilityServices}
+                selectedDemoServiceId={selectedDemoServiceId}
+                onSelectDemoService={setSelectedDemoServiceId}
+                demoQueueStatus={demoQueueStatus}
+                demoQueueLoading={demoQueueLoading}
+                demoQueueError={demoQueueError}
+                onTestServiceInTokenDesk={(serviceId) => {
+                  setSelectedServiceId(serviceId)
+                  setActiveNav('myTokens')
+                  const deskEl = document.getElementById('citizen-token-desk-section')
+                  if (deskEl) {
+                    deskEl.scrollIntoView({ behavior: 'smooth' })
+                  }
+                }}
+                onCheckQueue={() => {
+                  if (selectedDemoServiceId) {
+                    loadDemoQueueStatus(selectedDemoServiceId)
+                  }
+                }}
+              />
             </div>
 
-            {/* SECTION 1: M6.1.2 INDIA CIVIC QUEUE EXPLORER (20 CITIES & 12 CATEGORIES) */}
-            <IndiaDemoExplorer
-              cities={cities}
-              selectedCity={selectedCity}
-              onSelectCity={setSelectedCity}
-              facilities={facilities}
-              selectedFacilityId={selectedFacilityId}
-              onSelectFacility={setSelectedFacilityId}
-              facilityServices={facilityServices}
-              selectedDemoServiceId={selectedDemoServiceId}
-              onSelectDemoService={setSelectedDemoServiceId}
-              demoQueueStatus={demoQueueStatus}
-              demoQueueLoading={demoQueueLoading}
-              demoQueueError={demoQueueError}
-              onTestServiceInTokenDesk={(serviceId) => {
-                setSelectedServiceId(serviceId)
-                window.scrollTo({ top: 850, behavior: 'smooth' })
-              }}
-            />
-
-            {/* SECTION 2: CITIZEN DIGITAL TOKEN DESK (LIFECYCLE, 404 RECOVERY & OPERATOR ACTIONS) */}
-            <CitizenTokenDesk
-              currentUser={currentUser}
-              onOpenSignIn={() => {
-                setAuthTab('citizen')
-                setShowAuthModal(true)
-                setAuthError(null)
-              }}
-              services={services}
-              selectedServiceId={selectedServiceId}
-              onSelectService={setSelectedServiceId}
-              citizenName={citizenName}
-              onChangeCitizenName={setCitizenName}
-              citizenEmail={citizenEmail}
-              onChangeCitizenEmail={setCitizenEmail}
-              activeSessionId={activeSessionId}
-              userStatus={userStatus}
-              citizenLoading={citizenLoading}
-              citizenError={citizenError}
-              sessionNotice={sessionNotice}
-              onClearSessionNotice={() => setSessionNotice(null)}
-              selectedDemoServiceId={selectedDemoServiceId}
-              onJoinQueue={handleJoinQueue}
-              onCancelTicket={handleCancelTicket}
-              onDismissTicket={handleDismissTicket}
-              onRefreshTicket={() => loadUserStatus(activeSessionId)}
+            {/* Column 3: Right Persistent Token Panel ("My Queue Token") */}
+            <div
+              id="citizen-token-desk-section"
+              className="w-full lg:w-80 xl:w-96 shrink-0 border-t lg:border-t-0 border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 lg:p-6 bg-slate-50/40 dark:bg-slate-900/40"
             >
-              {activeSessionId && userStatus && (
-                <OperatorDesk
-                  currentUser={currentUser}
-                  userStatus={userStatus}
-                  citizenLoading={citizenLoading}
-                  operatorMessage={operatorMessage}
-                  operatorIsError={operatorIsError}
-                  onStartService={handleOperatorStart}
-                  onCompleteService={handleOperatorComplete}
-                  onRefreshStatus={() => loadUserStatus(activeSessionId)}
-                />
-              )}
-            </CitizenTokenDesk>
-
-            {/* SECTION 3: BACKEND HEALTH & READINESS PANEL */}
-            <HealthPanel
-              health={health}
-              healthLoading={healthLoading}
-              healthError={healthError}
-              lastChecked={lastChecked}
-              onCheckHealth={checkHealth}
-            />
-          </>
+              <CitizenTokenDesk
+                currentUser={currentUser}
+                onOpenSignIn={() => {
+                  setAuthTab('citizen')
+                  setShowAuthModal(true)
+                  setAuthError(null)
+                }}
+                services={services}
+                selectedServiceId={selectedServiceId}
+                onSelectService={setSelectedServiceId}
+                citizenName={citizenName}
+                onChangeCitizenName={setCitizenName}
+                citizenEmail={citizenEmail}
+                onChangeCitizenEmail={setCitizenEmail}
+                activeSessionId={activeSessionId}
+                userStatus={userStatus}
+                citizenLoading={citizenLoading}
+                citizenError={citizenError}
+                sessionNotice={sessionNotice}
+                onClearSessionNotice={() => setSessionNotice(null)}
+                selectedDemoServiceId={selectedDemoServiceId}
+                onJoinQueue={handleJoinQueue}
+                onCancelTicket={handleCancelTicket}
+                onDismissTicket={handleDismissTicket}
+                onRefreshTicket={() => loadUserStatus(activeSessionId)}
+              >
+                {activeSessionId && userStatus && (
+                  <OperatorDesk
+                    currentUser={currentUser}
+                    userStatus={userStatus}
+                    citizenLoading={citizenLoading}
+                    operatorMessage={operatorMessage}
+                    operatorIsError={operatorIsError}
+                    onStartService={handleOperatorStart}
+                    onCompleteService={handleOperatorComplete}
+                    onRefreshStatus={() => loadUserStatus(activeSessionId)}
+                  />
+                )}
+              </CitizenTokenDesk>
+            </div>
+          </main>
         )}
-      </main>
+      </div>
+
+      {/* 3. SYSTEM HEALTH PANEL */}
+      <div className="max-w-[1440px] mx-auto w-full relative z-10">
+        <HealthPanel
+          health={health}
+          healthLoading={healthLoading}
+          healthError={healthError}
+          lastChecked={lastChecked}
+          onCheckHealth={checkHealth}
+        />
+      </div>
 
       {/* AUTH MODAL */}
       <AuthModal
@@ -714,8 +805,20 @@ export function App() {
       />
 
       {/* Footer */}
-      <Footer />
+      <div className="relative z-10">
+        <Footer />
+      </div>
     </div>
+  )
+}
+
+export function App() {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
+    </ThemeProvider>
   )
 }
 
