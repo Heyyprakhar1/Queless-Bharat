@@ -514,4 +514,44 @@ test.describe('QueueLess Bharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => 
     )
     expect(storedSession).toBeNull()
   })
+
+  test('Scenario 12: Citizen Access modal displays Configuration Required notice when Google Client ID is unconfigured', async ({
+    page,
+  }) => {
+    // Intercept Google config to ensure unconfigured state
+    await page.route('**/api/v1/auth/google/config', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ enabled: false, client_id: null }),
+      })
+    })
+
+    await page.goto('/')
+    await page.click('#btn-open-citizen-access')
+    await expect(page.getByText('Google Sign-In Configuration Required')).toBeVisible()
+    await expect(
+      page.getByText('Google OAuth Client ID is not configured on this environment')
+    ).toBeVisible()
+  })
+
+  test('Scenario 13: Citizen Access modal displays Configuration Required notice when Google config endpoint fails or is unavailable', async ({
+    page,
+  }) => {
+    // Intercept Google config and simulate endpoint failure / 500 error
+    await page.route('**/api/v1/auth/google/config', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Service Unavailable' }),
+      })
+    })
+
+    await page.goto('/')
+    await page.click('#btn-open-citizen-access')
+    await expect(page.getByText('Google Sign-In Configuration Required')).toBeVisible()
+    await expect(
+      page.getByText('Google OAuth Client ID is not configured on this environment')
+    ).toBeVisible()
+  })
 })

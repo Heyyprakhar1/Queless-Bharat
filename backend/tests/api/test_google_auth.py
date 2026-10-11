@@ -307,6 +307,18 @@ class TestGoogleCitizenAuthentication:
         assert data["enabled"] is True
         assert data["client_id"] == TEST_CLIENT_ID
 
+    async def test_google_config_endpoint_when_disabled(
+        self, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Verifies GET /api/v1/auth/google/config safely returns enabled=False and client_id=None when disabled."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "GOOGLE_AUTH_ENABLED", False)
+        resp = await client.get("/api/v1/auth/google/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["enabled"] is False
+        assert data["client_id"] is None
+
     async def test_concurrent_first_signins_prevent_duplicate_accounts(self):
         """Verifies concurrent first sign-ins resolve cleanly without duplicates or crashes."""
         email = "concurrent.citizen@example.com"

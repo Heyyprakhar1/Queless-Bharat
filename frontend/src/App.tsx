@@ -166,9 +166,17 @@ export function App() {
     initCities()
     checkHealth()
     loadGlobalCatalog()
-    fetchGoogleAuthConfig().then((cfg) => {
-      if (cfg.client_id) setGoogleClientId(cfg.client_id)
-    })
+    fetchGoogleAuthConfig()
+      .then((cfg) => {
+        if (cfg.enabled && cfg.client_id) {
+          setGoogleClientId(cfg.client_id)
+        } else if (!cfg.enabled) {
+          setGoogleClientId(null)
+        }
+      })
+      .catch(() => {
+        setGoogleClientId(null)
+      })
     const interval = setInterval(checkHealth, 30000)
     return () => clearInterval(interval)
   }, [])
