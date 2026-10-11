@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useLanguage } from '../i18n'
 import type { User } from '../types/auth'
 import type { UserQueueStatusResponse } from '../types/queue'
 
@@ -23,31 +24,32 @@ export const OperatorDesk: React.FC<OperatorDeskProps> = ({
   onCompleteService,
   onRefreshStatus,
 }) => {
+  const { t } = useLanguage()
   const isOperatorOrAdmin =
     currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN'
 
   return (
-    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/60">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
         <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Counter Operator Desk (Staff Controls)
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            {t('operator.heading')}
           </span>
           <span
             id="operator-role-indicator"
             className={`text-[10px] font-bold px-2 py-0.5 rounded ${
               isOperatorOrAdmin
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
             }`}
           >
             {isOperatorOrAdmin
-              ? `Authorized (${currentUser?.role})`
-              : `Staff Restricted (Role: ${currentUser?.role || 'Unauthenticated'})`}
+              ? t('operator.authorized', { role: currentUser?.role || '' })
+              : t('operator.restricted', { role: currentUser?.role || 'Unauthenticated' })}
           </span>
         </div>
-        <span className="text-[11px] text-slate-500">
-          Advances ticket state (Requires OPERATOR or ADMIN role)
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          {t('operator.advancesNotice')}
         </span>
       </div>
 
@@ -58,7 +60,7 @@ export const OperatorDesk: React.FC<OperatorDeskProps> = ({
           disabled={citizenLoading || userStatus.session.status !== 'WAITING'}
           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition cursor-pointer"
         >
-          Call into Service (Start)
+          {t('operator.callIntoService')}
         </button>
         <button
           id="btn-operator-complete"
@@ -66,14 +68,14 @@ export const OperatorDesk: React.FC<OperatorDeskProps> = ({
           disabled={citizenLoading || userStatus.session.status !== 'IN_SERVICE'}
           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition cursor-pointer"
         >
-          Finish Service (Complete)
+          {t('operator.finishService')}
         </button>
         <button
           onClick={onRefreshStatus}
           disabled={citizenLoading}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
         >
-          Manual Refresh
+          {t('operator.manualRefresh')}
         </button>
       </div>
 
@@ -82,8 +84,8 @@ export const OperatorDesk: React.FC<OperatorDeskProps> = ({
           id="operator-message"
           className={`mt-3 p-2.5 rounded-lg text-xs font-medium border ${
             operatorIsError
-              ? 'bg-rose-50 text-rose-800 border-rose-200'
-              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
           }`}
         >
           {operatorMessage}

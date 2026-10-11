@@ -1,4 +1,5 @@
 export { Header } from './Header'
+export { Sidebar } from './Sidebar'
 export { IndiaDemoExplorer } from './IndiaDemoExplorer'
 export { CitizenTokenDesk } from './CitizenTokenDesk'
 export { OperatorDesk } from './OperatorDesk'

@@ -22,6 +22,7 @@ Instead of offering unrealistic promises of eliminating physical queues entirely
 - **Milestone 5 / M5.1: Container Packaging, Docker Compose Stack & Release Engineering** — Multi-stage non-root images, Compose orchestration, health-gated readiness, and GitHub Actions CI with Trivy scanning — *Implemented & Verified*
 - **Milestone 6.1: India Demo Coverage & Facility Dataset** — 8 Major Cities (Pune Showcase), verified facilities, useful civic services, simulated queue scenarios, and pure deterministic wait projections — *Complete*
 - **Milestone 6.1.1: Security, Reliability & Architecture Hardening** — Privilege escalation prevention, pessimistic row-level locking concurrency safety, DB counter precedence, production secret fail-closed enforcement, sliding-window rate limiting, HTTP security headers, and frontend component modularization — *Complete*
+- **Milestone 6.2: Google Citizen Authentication (OIDC) & Spatial Civic-Tech Experience** — Google OAuth / OIDC login, 20-city catalog, 3-column spatial layout, platform-wide Dark/Light mode, multilingual foundation (English, Hindi, Marathi), and Indian tricolour & Ashoka Chakra watermark theme — *Complete*
 
 > [!NOTE]
 > **Explicit Non-Claims:**
@@ -196,7 +197,7 @@ npm run build
 # Run Oxlint static analysis
 npm run lint
 
-# Run Playwright Browser E2E test suites (21 tests)
+# Run Playwright Browser E2E test suites (32 tests)
 npx playwright test
 ```
 
@@ -208,11 +209,13 @@ Default local dev ports:
 
 ### 4. Automated Testing Suites
 
-- **Backend Pytest Suite:** 93 tests covering unit estimators, transaction rollbacks, API contract hardening, authentication/RBAC, pessimistic concurrency locking, counter observation precedence, config fail-closed validation, sliding-window rate limiting, and M6.1 India demo catalog endpoints.
-- **Frontend Playwright E2E Suites:** 21 tests covering:
+- **Backend Pytest Suite:** 131 tests covering unit estimators, transaction rollbacks, API contract hardening, Google OAuth / OIDC, authentication/RBAC, pessimistic concurrency locking, counter observation precedence, config fail-closed validation, sliding-window rate limiting, and 20-city India demo catalog endpoints.
+- **Frontend Playwright E2E Suites:** 32 tests covering:
   - `e2e/india-demo-flow.spec.ts`: City &rarr; Facility &rarr; Service cascading flow, Pune showcase, deterministic wait estimate rendering, simulated data banners, and insufficient-data states.
   - `e2e/queue-flow.spec.ts`: End-to-end citizen queue join, polling updates, operator desk lifecycle transitions, and cancellation.
-  - `e2e/auth-flow.spec.ts`: Login, registration, token persistence, RBAC role guard enforcement, and BOLA/IDOR prevention.
+  - `e2e/auth-flow.spec.ts`: Google Citizen sign-in, login, registration, token persistence, RBAC role guard enforcement, and BOLA/IDOR prevention.
+  - `e2e/theme-i18n.spec.ts`: Platform-wide Dark/Light mode toggle, English/Hindi/Marathi translations, language persistence, and mobile viewport controls.
+  - `e2e/api-routing.spec.ts`: Same-origin relative `/api/v1` proxying without hardcoded localhost references.
 
 ---
 

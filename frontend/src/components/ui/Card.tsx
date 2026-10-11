@@ -13,10 +13,11 @@ export const Card: React.FC<CardProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    elevated: 'bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-colors',
-    flat: 'bg-white border border-slate-200',
-    outline: 'bg-transparent border border-slate-300',
-    subtle: 'bg-slate-50 border border-slate-200/70',
+    elevated:
+      'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors',
+    flat: 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800',
+    outline: 'bg-transparent border border-slate-300 dark:border-slate-750',
+    subtle: 'bg-slate-50 dark:bg-slate-850 border border-slate-200/70 dark:border-slate-800',
   }[variant]
 
   return (
@@ -34,7 +35,7 @@ export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   children,
   ...props
 }) => (
-  <div className={`space-y-1 pb-4 border-b border-slate-100 ${className}`} {...props}>
+  <div className={`space-y-1 pb-4 border-b border-slate-100 dark:border-slate-800 ${className}`} {...props}>
     {children}
   </div>
 )
@@ -44,7 +45,7 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
   children,
   ...props
 }) => (
-  <h3 className={`text-base sm:text-lg font-bold text-slate-900 tracking-tight ${className}`} {...props}>
+  <h3 className={`text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight ${className}`} {...props}>
     {children}
   </h3>
 )
@@ -54,7 +55,7 @@ export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement
   children,
   ...props
 }) => (
-  <p className={`text-xs sm:text-sm text-slate-500 font-medium ${className}`} {...props}>
+  <p className={`text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium ${className}`} {...props}>
     {children}
   </p>
 )
@@ -74,7 +75,7 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   children,
   ...props
 }) => (
-  <div className={`pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-3 ${className}`} {...props}>
+  <div className={`pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 ${className}`} {...props}>
     {children}
   </div>
 )
