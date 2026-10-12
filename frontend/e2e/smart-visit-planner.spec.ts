@@ -175,7 +175,9 @@ test.describe('Smart Visit Planner E2E Suite', () => {
     const plannerSection = page.locator('#smart-visit-planner-section')
     await expect(plannerSection.getByRole('heading', { name: /स्मार्ट विज़िट प्लानर/ })).toBeVisible()
     await expect(plannerSection.getByRole('heading', { name: /दस्तावेज़ तत्परता चेकलिस्ट/ })).toBeVisible()
-    await expect(plannerSection.getByText('सटीक आगमन समय-सीमा (Arrival Window)')).toBeVisible()
+    await expect(
+      plannerSection.getByRole('heading', { name: /सटीक आगमन समय-सीमा/ })
+    ).toBeVisible()
 
     // Switch to Marathi
     await langSelect.selectOption('mr')

@@ -53,6 +53,7 @@ export interface QueueSession {
   service_id: string
   user_id?: string | null
   status: QueueSessionStatus
+  position?: number | null
   checked_in_at: string
   service_started_at?: string | null
   completed_at?: string | null
@@ -99,4 +100,11 @@ export interface UserQueueStatusResponse {
   queue_state: QueueStateSummary
   estimated_wait: WaitEstimate
   is_simulated?: boolean
+}
+
+export interface OperatorDeskResponse {
+  service: Service
+  active_session: QueueSession | null
+  waiting_sessions: QueueSession[]
+  waiting_count: number
 }

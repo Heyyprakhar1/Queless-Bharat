@@ -1,8 +1,8 @@
-"""Full HTTP -> Service -> PostgreSQL API integration tests for Milestone 2."""
-
 import uuid
 
 import httpx
+
+from app.domain.enums import UserRole
 
 
 class TestQueueAPIIntegration:
@@ -317,3 +317,214 @@ class TestQueueAPIIntegration:
         assert (await client.get(f"/api/v1/services/{random_id}")).status_code == 404
         assert (await client.get(f"/api/v1/queue/{random_id}")).status_code == 404
         assert (await client.get(f"/api/v1/services/{random_id}/queue-status")).status_code == 404
+
+    async def test_operator_desk_waiting_tokens_and_visibility(
+        self,
+        client: httpx.AsyncClient,
+        make_user,
+        unauth_client: httpx.AsyncClient,
+    ):
+        """Verifies operator desk fetches waiting tokens and active seated participant
+        for assigned service.
+        """
+        loc = (
+            await client.post(
+                "/api/v1/locations",
+                json={
+                    "name": "Fergusson College Campus Office",
+                    "category": "college",
+                    "address": "FC Road, Shivajinagar",
+                    "city": "Pune",
+                    "state": "Maharashtra",
+                },
+            )
+        ).json()
+        svc = (
+            await client.post(
+                "/api/v1/services",
+                json={
+                    "location_id": loc["id"],
+                    "name": "Admissions & Merit List Verification",
+                },
+            )
+        ).json()
+
+        # Create operator assigned to this service
+        _, _, op_headers = await make_user(
+            "operator_pune@queless.gov.in",
+            role=UserRole.OPERATOR,
+            full_name="Pune Desk Operator",
+            assigned_service_id=uuid.UUID(svc["id"]),
+        )
+
+        # Check-in 2 citizens
+        cit1 = (
+            await client.post(
+                "/api/v1/queue/check-in",
+                json={"service_id": svc["id"], "user_id": "Citizen Alpha"},
+            )
+        ).json()
+        cit2 = (
+            await client.post(
+                "/api/v1/queue/check-in",
+                json={"service_id": svc["id"], "user_id": "Citizen Beta"},
+            )
+        ).json()
+
+        # Operator fetches waiting sessions
+        wait_resp = await unauth_client.get(
+            f"/api/v1/queue/services/{svc['id']}/waiting",
+            headers=op_headers,
+        )
+        assert wait_resp.status_code == 200
+        waiting_list = wait_resp.json()
+        assert len(waiting_list) == 2
+        assert waiting_list[0]["id"] == cit1["id"]
+        assert waiting_list[0]["position"] == 1
+        assert waiting_list[1]["id"] == cit2["id"]
+        assert waiting_list[1]["position"] == 2
+
+        # Operator fetches desk state
+        desk_resp = await unauth_client.get(
+            f"/api/v1/queue/services/{svc['id']}/desk",
+            headers=op_headers,
+        )
+        assert desk_resp.status_code == 200
+        desk_data = desk_resp.json()
+        assert desk_data["service"]["id"] == svc["id"]
+        assert desk_data["active_session"] is None
+        assert desk_data["waiting_count"] == 2
+        assert len(desk_data["waiting_sessions"]) == 2
+
+        # Operator starts service on first citizen
+        start_resp = await unauth_client.post(
+            f"/api/v1/queue/{cit1['id']}/start",
+            headers=op_headers,
+        )
+        assert start_resp.status_code == 200
+
+        # Verify desk reflects active seated participant and remaining waiting
+        desk_resp_2 = await unauth_client.get(
+            "/api/v1/queue/operator/desk",
+            headers=op_headers,
+        )
+        assert desk_resp_2.status_code == 200
+        desk_data_2 = desk_resp_2.json()
+        assert desk_data_2["active_session"] is not None
+        assert desk_data_2["active_session"]["id"] == cit1["id"]
+        assert desk_data_2["active_session"]["status"] == "IN_SERVICE"
+        assert desk_data_2["waiting_count"] == 1
+        assert desk_data_2["waiting_sessions"][0]["id"] == cit2["id"]
+
+    async def test_operator_service_assignment_consistency_and_bola(
+        self,
+        client: httpx.AsyncClient,
+        make_user,
+        unauth_client: httpx.AsyncClient,
+    ):
+        """Verifies operator assigned to Service A cannot query or operate Service B
+        (BOLA protection).
+        """
+        loc = (
+            await client.post(
+                "/api/v1/locations",
+                json={
+                    "name": "District Complex",
+                    "category": "government_office",
+                    "address": "Collectorate",
+                    "city": "Mumbai",
+                    "state": "Maharashtra",
+                },
+            )
+        ).json()
+        svcA = (
+            await client.post(
+                "/api/v1/services",
+                json={"location_id": loc["id"], "name": "Income Certificate"},
+            )
+        ).json()
+        svcB = (
+            await client.post(
+                "/api/v1/services",
+                json={"location_id": loc["id"], "name": "Domicile Certificate"},
+            )
+        ).json()
+
+        # Operator assigned strictly to svcA
+        _, _, op_headers = await make_user(
+            "op_svca@queless.gov.in",
+            role=UserRole.OPERATOR,
+            assigned_service_id=uuid.UUID(svcA["id"]),
+        )
+
+        # Check in citizen to svcB
+        citB = (
+            await client.post(
+                "/api/v1/queue/check-in",
+                json={"service_id": svcB["id"], "user_id": "Citizen B"},
+            )
+        ).json()
+
+        # Operator svcA attempts to view waiting tokens for svcB -> 403 Forbidden
+        resp_b_wait = await unauth_client.get(
+            f"/api/v1/queue/services/{svcB['id']}/waiting",
+            headers=op_headers,
+        )
+        assert resp_b_wait.status_code == 403
+        assert "not assigned to this service" in resp_b_wait.json()["detail"]
+
+        # Operator svcA attempts to view desk for svcB -> 403 Forbidden
+        resp_b_desk = await unauth_client.get(
+            f"/api/v1/queue/services/{svcB['id']}/desk",
+            headers=op_headers,
+        )
+        assert resp_b_desk.status_code == 403
+
+        # Operator svcA attempts to start token on svcB -> 403 Forbidden
+        resp_b_start = await unauth_client.post(
+            f"/api/v1/queue/{citB['id']}/start",
+            headers=op_headers,
+        )
+        assert resp_b_start.status_code == 403
+        assert "not assigned to this service" in resp_b_start.json()["detail"]
+
+    async def test_citizen_role_forbidden_on_operator_desk_endpoints(
+        self,
+        client: httpx.AsyncClient,
+        citizen_auth,
+        unauth_client: httpx.AsyncClient,
+    ):
+        """Verifies citizens are rejected with 403 Forbidden on operator queue endpoints."""
+        _, _, cit_headers = citizen_auth
+        loc = (
+            await client.post(
+                "/api/v1/locations",
+                json={
+                    "name": "RTO East",
+                    "category": "rto",
+                    "address": "East Highway",
+                    "city": "Bengaluru",
+                    "state": "Karnataka",
+                },
+            )
+        ).json()
+        svc = (
+            await client.post(
+                "/api/v1/services",
+                json={"location_id": loc["id"], "name": "LL Test"},
+            )
+        ).json()
+
+        resp_wait = await unauth_client.get(
+            f"/api/v1/queue/services/{svc['id']}/waiting",
+            headers=cit_headers,
+        )
+        assert resp_wait.status_code == 403
+        assert "lacks permission for this action" in resp_wait.json()["detail"]
+
+        resp_desk = await unauth_client.get(
+            f"/api/v1/queue/services/{svc['id']}/desk",
+            headers=cit_headers,
+        )
+        assert resp_desk.status_code == 403
+        assert "lacks permission for this action" in resp_desk.json()["detail"]
