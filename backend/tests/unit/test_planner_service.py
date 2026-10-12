@@ -72,9 +72,7 @@ def test_checklist_resolution_dl_renewal():
 
     assert checklist.has_verified_checklist is True
     assert "Sarathi Parivahan" in (checklist.source_title or "")
-    assert (
-        checklist.source_url == "https://parivahan.gov.in/parivahan//en/content/driving-licence-0"
-    )
+    assert checklist.source_url == "https://sarathi.parivahan.gov.in/"
     assert checklist.verification_date == "2026-10-01"
     assert "does not guarantee" in checklist.disclaimer
     assert len(checklist.items) == 4

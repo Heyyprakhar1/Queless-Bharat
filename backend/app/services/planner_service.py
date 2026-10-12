@@ -27,7 +27,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
             "driving license renewal",
         ],
         "source_title": "Ministry of Road Transport and Highways (MoRTH) / Sarathi Parivahan",
-        "source_url": "https://parivahan.gov.in/parivahan//en/content/driving-licence-0",
+        "source_url": "https://sarathi.parivahan.gov.in/",
         "verification_date": "2026-10-01",
         "items": [
             DocumentChecklistItem(
@@ -35,7 +35,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
                 name="Original Driving Licence",
                 description=(
                     "Physical licence card to be inspected and surrendered for new smart card "
-                    "issuance."
+                    "issuance (CMVR 1989 Rule 18(1)(a))."
                 ),
                 requirement_type="ORIGINAL_ONLY",
                 is_mandatory=True,
@@ -48,7 +48,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
                 name="Medical Certificate (Form 1-A)",
                 description=(
                     "Official medical fitness certificate signed and sealed by a registered "
-                    "medical practitioner."
+                    "medical practitioner (CMVR 1989 Rules 5(1), (3), 18(d))."
                 ),
                 requirement_type="ORIGINAL_ONLY",
                 is_mandatory=True,
@@ -62,7 +62,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
                 name="Proof of Age & Address",
                 description=(
                     "Valid government-issued photo identity and address document (Aadhaar, "
-                    "Voter ID, or Passport)."
+                    "Voter ID, or Passport per CMVR Rule 4 & 18(1)(b))."
                 ),
                 requirement_type="BOTH_ORIGINAL_AND_PHOTOCOPY",
                 is_mandatory=True,
@@ -76,7 +76,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
                 name="Sarathi Online Application Acknowledgement (Form 9)",
                 description=(
                     "Printed confirmation slip or application reference receipt from the Sarathi "
-                    "Parivahan portal."
+                    "Parivahan portal (CMVR Rule 18(1))."
                 ),
                 requirement_type="PHOTOCOPY_ONLY",
                 is_mandatory=True,
@@ -92,9 +92,7 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
             "aadhaar modification",
         ],
         "source_title": "Unique Identification Authority of India (UIDAI)",
-        "source_url": (
-            "https://uidai.gov.in/en/my-aadhaar/about-your-aadhaar/updating-data-on-aadhaar.html"
-        ),
+        "source_url": "https://myaadhaar.uidai.gov.in/",
         "verification_date": "2026-10-01",
         "items": [
             DocumentChecklistItem(
