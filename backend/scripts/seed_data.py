@@ -1864,7 +1864,8 @@ async def seed() -> None:
                         now=now,
                     )
 
-        # Assign operator Rajesh to Admissions & Merit List Verification service for Pune showcase desk
+        # Assign operator Rajesh to Admissions & Merit List Verification service
+        # for Pune showcase desk
         admissions_stmt = select(Service).where(
             Service.name == "Admissions & Merit List Verification"
         )
