@@ -72,14 +72,20 @@ test.describe('QueueLess Bharat — M6.1 India Demo Coverage E2E Suite', () => {
     await page.locator('#city-select').selectOption('Pune')
 
     const facilitySelect = page.locator('#facility-select')
-    const sassoonOption = await facilitySelect.locator('option:has-text("Sassoon")').first().getAttribute('value')
-    expect(sassoonOption).toBeTruthy()
-    await facilitySelect.selectOption(sassoonOption!)
+    const sassoonOption = facilitySelect.locator('option:has-text("Sassoon")').first()
+    await expect(sassoonOption).toBeAttached()
+    const sassoonVal = await sassoonOption.getAttribute('value')
+    expect(sassoonVal).toBeTruthy()
+    await facilitySelect.selectOption(sassoonVal!)
 
     const serviceSelect = page.locator('#service-select')
-    const radioOption = await serviceSelect.locator('option:has-text("Radiology")').first().getAttribute('value')
-    expect(radioOption).toBeTruthy()
-    await serviceSelect.selectOption(radioOption!)
+    const radioOption = serviceSelect.locator('option:has-text("Radiology")').first()
+    await expect(radioOption).toBeAttached()
+    const radioVal = await radioOption.getAttribute('value')
+    expect(radioVal).toBeTruthy()
+    await serviceSelect.selectOption(radioVal!)
+
+    await page.locator('#btn-check-queue').click()
 
     // Verify unavailable state
     const unavailableMsg = page.locator('#demo-unavailable-msg')
@@ -95,14 +101,20 @@ test.describe('QueueLess Bharat — M6.1 India Demo Coverage E2E Suite', () => {
     await page.locator('#city-select').selectOption('Pune')
 
     const facilitySelect = page.locator('#facility-select')
-    const pmcOption = await facilitySelect.locator('option:has-text("PMC")').first().getAttribute('value')
-    expect(pmcOption).toBeTruthy()
-    await facilitySelect.selectOption(pmcOption!)
+    const pmcOption = facilitySelect.locator('option:has-text("PMC")').first()
+    await expect(pmcOption).toBeAttached()
+    const pmcVal = await pmcOption.getAttribute('value')
+    expect(pmcVal).toBeTruthy()
+    await facilitySelect.selectOption(pmcVal!)
 
     const serviceSelect = page.locator('#service-select')
-    const bdOption = await serviceSelect.locator('option:has-text("Birth & Death")').first().getAttribute('value')
-    expect(bdOption).toBeTruthy()
-    await serviceSelect.selectOption(bdOption!)
+    const bdOption = serviceSelect.locator('option:has-text("Birth & Death")').first()
+    await expect(bdOption).toBeAttached()
+    const bdVal = await bdOption.getAttribute('value')
+    expect(bdVal).toBeTruthy()
+    await serviceSelect.selectOption(bdVal!)
+
+    await page.locator('#btn-check-queue').click()
 
     await expect(page.locator('#demo-active-counters')).toContainText('0')
     const unavailableMsg = page.locator('#demo-unavailable-msg')

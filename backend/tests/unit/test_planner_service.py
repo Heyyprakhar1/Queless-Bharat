@@ -71,9 +71,10 @@ def test_checklist_resolution_dl_renewal():
     )
 
     assert checklist.has_verified_checklist is True
+    assert checklist.verification_status == "VERIFIED"
     assert "Sarathi Parivahan" in (checklist.source_title or "")
     assert checklist.source_url == "https://sarathi.parivahan.gov.in/"
-    assert checklist.verification_date == "2026-10-01"
+    assert checklist.verification_date == "2026-10-12"
     assert "does not guarantee" in checklist.disclaimer
     assert len(checklist.items) == 4
 
@@ -95,9 +96,10 @@ def test_checklist_resolution_aadhaar_update():
     )
 
     assert checklist.has_verified_checklist is True
+    assert checklist.verification_status == "VERIFIED"
     assert "UIDAI" in (checklist.source_title or "")
     assert "uidai.gov.in" in (checklist.source_url or "")
-    assert checklist.verification_date == "2026-10-01"
+    assert checklist.verification_date == "2026-10-12"
     assert len(checklist.items) == 3
 
     item_map = {item.id: item for item in checklist.items}
@@ -107,18 +109,152 @@ def test_checklist_resolution_aadhaar_update():
     assert item_map["poa_original"].requirement_type == "ORIGINAL_ONLY"
 
 
-def test_checklist_resolution_unverified_service():
-    """Verifies truthful unverified state when official checklist is not yet cataloged."""
+def test_checklist_resolution_learner_and_permanent_licence():
+    """Verifies statutory MoRTH Sarathi checklists for Learner and Permanent DL
+    across priority cities.
+    """
     planner = PlannerService(session=MagicMock())
     service_id = uuid.uuid4()
-    checklist = planner._resolve_document_checklist(service_id, "General Hospital OPD Consultation")
 
+    # Learner licence
+    ll_checklist = planner._resolve_document_checklist(
+        service_id, "Learner's Licence Application & Test"
+    )
+    assert ll_checklist.has_verified_checklist is True
+    assert ll_checklist.verification_status == "VERIFIED"
+    assert "sarathi.parivahan.gov.in" in (ll_checklist.source_url or "")
+    assert ll_checklist.verification_date == "2026-10-12"
+    ll_map = {item.id: item for item in ll_checklist.items}
+    assert "ll_form2_ack" in ll_map
+    assert ll_map["ll_form2_ack"].requirement_type == "PHOTOCOPY_ONLY"
+    assert "ll_parent_consent" in ll_map
+    assert ll_map["ll_parent_consent"].is_conditional is True
+    assert "applicants aged 16–18" in (ll_map["ll_parent_consent"].condition_description or "")
+
+    # Permanent licence
+    pdl_checklist = planner._resolve_document_checklist(
+        service_id, "Permanent Driving Licence Driving Test Track"
+    )
+    assert pdl_checklist.has_verified_checklist is True
+    assert pdl_checklist.verification_status == "VERIFIED"
+    pdl_map = {item.id: item for item in pdl_checklist.items}
+    assert "pdl_valid_ll" in pdl_map
+    assert pdl_map["pdl_valid_ll"].requirement_type == "ORIGINAL_ONLY"
+    assert "pdl_driving_school_form5" in pdl_map
+    assert pdl_map["pdl_driving_school_form5"].is_conditional is True
+
+
+def test_checklist_resolution_vehicle_registration_and_idp():
+    """Verifies Vahan vehicle transfer and Sarathi IDP checklists."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    # Vahan vehicle registration / transfer
+    vahan_checklist = planner._resolve_document_checklist(
+        service_id, "Vehicle Registration & Ownership Transfer"
+    )
+    assert vahan_checklist.has_verified_checklist is True
+    assert vahan_checklist.verification_status == "VERIFIED"
+    assert "vahan.parivahan.gov.in" in (vahan_checklist.source_url or "")
+    vahan_map = {item.id: item for item in vahan_checklist.items}
+    assert "vrt_rc_original" in vahan_map
+    assert vahan_map["vrt_rc_original"].requirement_type == "ORIGINAL_ONLY"
+    assert "vrt_form_29" in vahan_map
+    assert vahan_map["vrt_form_29"].requirement_type == "BOTH_ORIGINAL_AND_PHOTOCOPY"
+    assert "vrt_form_35_hypothecation" in vahan_map
+    assert vahan_map["vrt_form_35_hypothecation"].is_conditional is True
+
+    # IDP
+    idp_checklist = planner._resolve_document_checklist(
+        service_id, "International Driving Permit (IDP) Verification"
+    )
+    assert idp_checklist.has_verified_checklist is True
+    assert idp_checklist.verification_status == "VERIFIED"
+    idp_map = {item.id: item for item in idp_checklist.items}
+    assert "idp_passport_visa" in idp_map
+    assert idp_map["idp_passport_visa"].requirement_type == "BOTH_ORIGINAL_AND_PHOTOCOPY"
+
+
+def test_checklist_resolution_radiology_pcpndt():
+    """Verifies statutory MoHFW/PCPNDT Act Form F checklist for Ultrasound and Radiology."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    radiology_checklist = planner._resolve_document_checklist(
+        service_id, "Radiology & Ultrasound Registration"
+    )
+
+    assert radiology_checklist.has_verified_checklist is True
+    assert radiology_checklist.verification_status == "VERIFIED"
+    assert "mohfw.gov.in" in (radiology_checklist.source_url or "")
+    assert radiology_checklist.verification_date == "2026-10-12"
+    rad_map = {item.id: item for item in radiology_checklist.items}
+    assert "pcpndt_prescription" in rad_map
+    assert rad_map["pcpndt_prescription"].requirement_type == "ORIGINAL_ONLY"
+    assert "pcpndt_form_f" in rad_map
+    assert "PCPNDT Act" in rad_map["pcpndt_form_f"].description
+
+
+def test_checklist_resolution_partially_verified_services():
+    """Verifies PARTIALLY_VERIFIED status for services with statutory basis but
+    municipal/hospital variations.
+    """
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    # Hospital OPD
+    opd_checklist = planner._resolve_document_checklist(
+        service_id, "OPD General Medicine Registration"
+    )
+    assert opd_checklist.has_verified_checklist is True
+    assert opd_checklist.verification_status == "PARTIALLY_VERIFIED"
+    assert "ors.gov.in" in (opd_checklist.source_url or "")
+    opd_map = {item.id: item for item in opd_checklist.items}
+    assert "opd_abha_id" in opd_map
+    assert "opd_referral" in opd_map
+    assert opd_map["opd_referral"].is_conditional is True
+
+    # Property Tax
+    pt_checklist = planner._resolve_document_checklist(
+        service_id, "Property Tax Assessment & Payment"
+    )
+    assert pt_checklist.has_verified_checklist is True
+    assert pt_checklist.verification_status == "PARTIALLY_VERIFIED"
+    pt_map = {item.id: item for item in pt_checklist.items}
+    assert "pt_bill_receipt" in pt_map
+    assert "pt_khata_extract" in pt_map
+    assert pt_map["pt_khata_extract"].is_conditional is True
+
+    # Pathology Blood Sampling
+    path_checklist = planner._resolve_document_checklist(
+        service_id, "Pathology & Blood Sample Collection"
+    )
+    assert path_checklist.has_verified_checklist is True
+    assert path_checklist.verification_status == "PARTIALLY_VERIFIED"
+
+
+def test_checklist_resolution_unverified_service():
+    """Verifies truthful unverified state when official checklist is not cataloged or
+    for demo services.
+    """
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    # General uncataloged service
+    checklist = planner._resolve_document_checklist(service_id, "General Hospital OPD Consultation")
     assert checklist.has_verified_checklist is False
+    assert checklist.verification_status == "UNVERIFIED"
     assert checklist.source_title is None
     assert checklist.source_url is None
     assert checklist.verification_date is None
     assert len(checklist.items) == 0
     assert "not yet available" in checklist.disclaimer
+
+    # College demo services (Fergusson College, Gujarat University)
+    college_service = planner._resolve_document_checklist(
+        service_id, "Degree Certificate Issuance Counter"
+    )
+    assert college_service.has_verified_checklist is False
+    assert college_service.verification_status == "UNVERIFIED"
 
 
 def test_arrival_window_sufficient_data_recommendation():

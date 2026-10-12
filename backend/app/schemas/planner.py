@@ -24,6 +24,13 @@ class DocumentChecklistItem(BaseModel):
         ),
     )
     is_mandatory: bool = Field(default=True, description="Whether document is strictly required")
+    is_conditional: bool = Field(
+        default=False,
+        description="Whether document requirement depends on applicant circumstances",
+    )
+    condition_description: str | None = Field(
+        default=None, description="Circumstances under which this document is required"
+    )
     notes: str | None = Field(
         default=None, description="Additional verified instructions or caveats"
     )
@@ -36,6 +43,10 @@ class DocumentChecklist(BaseModel):
 
     service_id: uuid.UUID
     service_name: str
+    verification_status: str = Field(
+        default="UNVERIFIED",
+        description="Verification level: VERIFIED, PARTIALLY_VERIFIED, or UNVERIFIED",
+    )
     has_verified_checklist: bool = Field(
         ..., description="True if requirements are backed by an official government source"
     )

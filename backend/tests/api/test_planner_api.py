@@ -61,8 +61,9 @@ class TestPlannerAPIIntegration:
         # Check checklist contract
         checklist = plan["document_checklist"]
         assert checklist["has_verified_checklist"] is True
+        assert checklist["verification_status"] == "VERIFIED"
         assert "Sarathi" in checklist["source_title"]
-        assert checklist["verification_date"] == "2026-10-01"
+        assert checklist["verification_date"] == "2026-10-12"
         assert len(checklist["items"]) == 4
 
         # Since no counters/sessions are active, arrival window should be is_recommended: False

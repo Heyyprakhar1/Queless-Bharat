@@ -326,8 +326,32 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="space-y-0.5">
-                  <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
                     <span>{t('planner.checklistHeading')}</span>
+                    {(() => {
+                      const verifStatus =
+                        plan.document_checklist.verification_status ||
+                        (plan.document_checklist.has_verified_checklist ? 'VERIFIED' : 'UNVERIFIED')
+                      if (verifStatus === 'VERIFIED') {
+                        return (
+                          <Badge variant="success" size="sm">
+                            ✓ {t('planner.verifiedStatus')}
+                          </Badge>
+                        )
+                      }
+                      if (verifStatus === 'PARTIALLY_VERIFIED') {
+                        return (
+                          <Badge variant="warning" size="sm">
+                            ⚡ {t('planner.partiallyVerifiedStatus')}
+                          </Badge>
+                        )
+                      }
+                      return (
+                        <Badge variant="neutral" size="sm">
+                          {t('planner.unverifiedStatus')}
+                        </Badge>
+                      )
+                    })()}
                     {totalCount > 0 && (
                       <Badge variant={completedCount === totalCount ? 'success' : 'neutral'} size="sm">
                         {t('planner.checklistProgress', {
@@ -385,6 +409,12 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                     {plan.document_checklist.disclaimer}
                   </div>
 
+                  {plan.document_checklist.verification_status === 'PARTIALLY_VERIFIED' && (
+                    <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-900 dark:text-amber-200">
+                      ⚡ <strong>Advisory:</strong> {t('planner.partiallyVerifiedNotice')}
+                    </div>
+                  )}
+
                   {/* Checklist Items */}
                   <div className="space-y-2.5">
                     {checklistItems.map((item) => {
@@ -420,7 +450,7 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                               >
                                 {item.name}
                               </label>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 {renderRequirementBadge(item.requirement_type)}
                                 <Badge
                                   variant={item.is_mandatory ? 'danger' : 'neutral'}
@@ -430,11 +460,21 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                                     ? t('planner.mandatoryBadge')
                                     : t('planner.optionalBadge')}
                                 </Badge>
+                                {item.is_conditional && (
+                                  <Badge variant="warning" size="sm">
+                                    {t('planner.conditionalBadge')}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                               {item.description}
                             </p>
+                            {item.condition_description && (
+                              <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-900/60">
+                                ⚠️ {item.condition_description}
+                              </p>
+                            )}
                             {item.notes && (
                               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                                 ℹ️ {item.notes}

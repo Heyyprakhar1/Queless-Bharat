@@ -57,7 +57,7 @@ test.describe('Smart Visit Planner E2E Suite', () => {
     await expect(plannerSection.getByText(/Document Readiness Checklist/)).toBeVisible()
     await expect(plannerSection.getByText('Official Verified Source')).toBeVisible()
     await expect(plannerSection.getByText(/Sarathi Parivahan/i).first()).toBeVisible()
-    await expect(plannerSection.getByText('Last Verified: 2026-10-01')).toBeVisible()
+    await expect(plannerSection.getByText('Last Verified: 2026-10-12')).toBeVisible()
     await expect(
       plannerSection.getByText('Completing this checklist does not guarantee approval or service.')
     ).toBeVisible()
@@ -101,21 +101,21 @@ test.describe('Smart Visit Planner E2E Suite', () => {
     const citySelect = page.locator('#city-select')
     await citySelect.selectOption('Pune')
 
-    // Select Pune Sassoon General Hospital
+    // Select Pune Fergusson College Campus Office
     const facilitySelect = page.locator('#facility-select')
-    const sassoonOption = facilitySelect.locator('option:has-text("Sassoon")').first()
-    await expect(sassoonOption).toBeAttached()
-    const sassoonVal = await sassoonOption.getAttribute('value')
-    expect(sassoonVal).toBeTruthy()
-    await facilitySelect.selectOption(sassoonVal!)
+    const collegeOption = facilitySelect.locator('option:has-text("Fergusson")').first()
+    await expect(collegeOption).toBeAttached()
+    const collegeVal = await collegeOption.getAttribute('value')
+    expect(collegeVal).toBeTruthy()
+    await facilitySelect.selectOption(collegeVal!)
 
-    // Select OPD Registration & Token Counter
+    // Select Admissions & Merit List Verification
     const serviceSelect = page.locator('#service-select')
-    const opdOption = serviceSelect.locator('option:has-text("OPD")').first()
-    await expect(opdOption).toBeAttached()
-    const opdVal = await opdOption.getAttribute('value')
-    expect(opdVal).toBeTruthy()
-    await serviceSelect.selectOption(opdVal!)
+    const admOption = serviceSelect.locator('option:has-text("Admissions")').first()
+    await expect(admOption).toBeAttached()
+    const admVal = await admOption.getAttribute('value')
+    expect(admVal).toBeTruthy()
+    await serviceSelect.selectOption(admVal!)
 
     await page.locator('#btn-check-queue').click()
 

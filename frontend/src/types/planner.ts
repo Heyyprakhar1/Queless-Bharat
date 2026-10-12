@@ -5,18 +5,23 @@ export type DocumentRequirementType =
   | 'PHOTOCOPY_ONLY'
   | 'BOTH_ORIGINAL_AND_PHOTOCOPY'
 
+export type VerificationStatus = 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED'
+
 export interface DocumentChecklistItem {
   id: string
   name: string
   description: string
   requirement_type: DocumentRequirementType
   is_mandatory: boolean
+  is_conditional?: boolean
+  condition_description?: string | null
   notes?: string | null
 }
 
 export interface DocumentChecklist {
   service_id: string
   service_name: string
+  verification_status?: VerificationStatus
   has_verified_checklist: boolean
   source_title?: string | null
   source_url?: string | null
