@@ -116,6 +116,9 @@ class SlidingWindowRateLimiter:
         elif self.scope == "poll_session":
             max_requests = settings.RATE_LIMIT_POLL_SESSION_MAX
             window_seconds = settings.RATE_LIMIT_POLL_SESSION_WINDOW
+        elif self.scope == "visit_plan":
+            max_requests = settings.RATE_LIMIT_VISIT_PLAN_MAX
+            window_seconds = settings.RATE_LIMIT_VISIT_PLAN_WINDOW
 
         now = time.monotonic()
         cutoff = now - window_seconds
@@ -153,4 +156,7 @@ rate_limit_poll_service = SlidingWindowRateLimiter(
 )
 rate_limit_poll_session = SlidingWindowRateLimiter(
     max_requests=60, window_seconds=60, scope="poll_session"
+)
+rate_limit_visit_plan = SlidingWindowRateLimiter(
+    max_requests=120, window_seconds=60, scope="visit_plan"
 )

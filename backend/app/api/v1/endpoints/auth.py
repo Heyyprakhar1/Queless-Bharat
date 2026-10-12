@@ -1,5 +1,6 @@
 """Authentication and identity endpoints."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,7 +10,7 @@ from app.api.deps import get_current_admin, get_current_user
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit_auth_login, rate_limit_auth_register
 from app.db.session import get_db
-from app.domain.exceptions import DomainError
+from app.domain.exceptions import DomainError, ResourceNotFoundError
 from app.domain.models import User
 from app.schemas.auth import (
     AdminCreateUserRequest,
@@ -17,6 +18,7 @@ from app.schemas.auth import (
     CitizenRegisterRequest,
     GoogleAuthConfigResponse,
     GoogleAuthRequest,
+    StaffRegisterRequest,
     TokenResponse,
     UserLoginRequest,
     UserResponse,
@@ -128,6 +130,30 @@ async def register(
 
 
 @router.post(
+    "/staff-register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_auth_register)],
+)
+async def request_staff_registration(
+    data: StaffRegisterRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserResponse:
+    """Public staff access request. Creates a pending account with is_active=False.
+    Must be reviewed and activated by an Administrator before login is permitted.
+    """
+    auth_svc = AuthService(db)
+    try:
+        user = await auth_svc.request_staff_account(data)
+    except DomainError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    return UserResponse.model_validate(user)
+
+
+@router.post(
     "/admin/users",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -151,6 +177,44 @@ async def create_privileged_user(
     return UserResponse.model_validate(user)
 
 
+@router.get(
+    "/admin/users",
+    response_model=list[UserResponse],
+    status_code=status.HTTP_200_OK,
+)
+async def list_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
+    is_active: bool | None = None,
+) -> list[UserResponse]:
+    """Administrator-only: list all registered identities, optionally filtered by active status."""
+    auth_svc = AuthService(db)
+    users = await auth_svc.list_users(is_active=is_active)
+    return [UserResponse.model_validate(u) for u in users]
+
+
+@router.post(
+    "/admin/users/{user_id}/activate",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def activate_user(
+    user_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_admin: Annotated[User, Depends(get_current_admin)],
+) -> UserResponse:
+    """Administrator-only: approve/activate a pending staff or inactive user account."""
+    auth_svc = AuthService(db)
+    try:
+        user = await auth_svc.activate_user(user_id)
+    except ResourceNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return UserResponse.model_validate(user)
+
+
 @router.post(
     "/login",
     response_model=TokenResponse,
@@ -166,9 +230,15 @@ async def login(
     try:
         user, token = await auth_svc.authenticate_user(data.email, data.password)
     except DomainError as exc:
+        msg = str(exc)
+        if "pending administrator approval" in msg or "inactive" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=msg,
+            ) from exc
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
+            detail=msg,
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
     return TokenResponse(

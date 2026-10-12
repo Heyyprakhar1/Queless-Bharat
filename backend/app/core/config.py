@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_POLL_SERVICE_WINDOW: int = 60
     RATE_LIMIT_POLL_SESSION_MAX: int = 60
     RATE_LIMIT_POLL_SESSION_WINDOW: int = 60
+    RATE_LIMIT_VISIT_PLAN_MAX: int = 120
+    RATE_LIMIT_VISIT_PLAN_WINDOW: int = 60
 
     # Request Bounds
     MAX_REQUEST_BODY_BYTES: int = 1_048_576  # 1 MB default application-level limit

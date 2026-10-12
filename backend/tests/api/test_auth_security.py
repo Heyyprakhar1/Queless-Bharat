@@ -100,7 +100,7 @@ class TestAuthenticationSecurity:
         assert unknown_email.status_code == 401
 
     async def test_inactive_user_login_rejected(self, client: httpx.AsyncClient, make_user):
-        """Verifies deactivated accounts cannot login."""
+        """Verifies deactivated or pending accounts cannot login and receive HTTP 403 Forbidden."""
         await make_user(
             "inactive@example.com",
             role=UserRole.CITIZEN,
@@ -111,8 +111,90 @@ class TestAuthenticationSecurity:
             "/api/v1/auth/login",
             json={"email": "inactive@example.com", "password": "Password123!"},
         )
-        assert resp.status_code == 401
-        assert "inactive" in resp.json()["detail"]
+        assert resp.status_code == 403
+        assert "inactive" in resp.json()["detail"].lower()
+
+    async def test_staff_register_creates_inactive_user(self, client: httpx.AsyncClient):
+        """Verifies self-service staff registration creates inactive OPERATOR pending
+        administrator approval.
+        """
+        reg_resp = await client.post(
+            "/api/v1/auth/staff-register",
+            json={
+                "email": "pending.operator@pune.rto.gov.in",
+                "password": "SecurePassword123!",
+                "full_name": "RTO Operator Trainee",
+                "department_note": "Pune RTO Renewal Counter",
+            },
+        )
+        assert reg_resp.status_code == 201
+        data = reg_resp.json()
+        assert data["email"] == "pending.operator@pune.rto.gov.in"
+        assert data["role"] == "OPERATOR"
+        assert data["is_active"] is False
+
+        # Attempt to login immediately -> 403 Forbidden with distinctive pending message
+        login_resp = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "pending.operator@pune.rto.gov.in",
+                "password": "SecurePassword123!",
+            },
+        )
+        assert login_resp.status_code == 403
+        assert "pending administrator approval" in login_resp.json()["detail"].lower()
+
+    async def test_admin_list_and_activate_staff(self, client: httpx.AsyncClient, make_user):
+        """Verifies admin listing pending users and activating them."""
+        # Create an admin user
+        _, _, admin_hdrs = await make_user("sysadmin@gov.in", role=UserRole.ADMIN)
+
+        # Register pending staff
+        reg_resp = await client.post(
+            "/api/v1/auth/staff-register",
+            json={
+                "email": "trainee.desk@morth.gov.in",
+                "password": "SecurePassword123!",
+                "full_name": "MoRTH Trainee",
+            },
+        )
+        assert reg_resp.status_code == 201
+        user_id = reg_resp.json()["id"]
+
+        # Non-admin cannot list users
+        _, _, citizen_hdrs = await make_user("citizen.user@example.com", role=UserRole.CITIZEN)
+        unauth_list = await client.get("/api/v1/auth/admin/users", headers=citizen_hdrs)
+        assert unauth_list.status_code == 403
+
+        # Non-admin cannot activate user
+        unauth_act = await client.post(
+            f"/api/v1/auth/admin/users/{user_id}/activate", headers=citizen_hdrs
+        )
+        assert unauth_act.status_code == 403
+
+        # Admin lists users (filtering by is_active=false)
+        list_resp = await client.get("/api/v1/auth/admin/users?is_active=false", headers=admin_hdrs)
+        assert list_resp.status_code == 200
+        pending_ids = [u["id"] for u in list_resp.json()]
+        assert user_id in pending_ids
+
+        # Admin activates the pending staff account
+        act_resp = await client.post(
+            f"/api/v1/auth/admin/users/{user_id}/activate", headers=admin_hdrs
+        )
+        assert act_resp.status_code == 200
+        assert act_resp.json()["is_active"] is True
+
+        # Staff can now successfully login
+        staff_login = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "trainee.desk@morth.gov.in",
+                "password": "SecurePassword123!",
+            },
+        )
+        assert staff_login.status_code == 200
+        assert staff_login.json()["user"]["role"] == "OPERATOR"
 
     async def test_token_validation_and_expiration(
         self, unauth_client: httpx.AsyncClient, make_user

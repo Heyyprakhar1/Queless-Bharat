@@ -148,6 +148,21 @@ export interface TranslationDictionary {
     configRequiredDesc: string
     continueGoogleFallback: string
     verifyingGoogle: string
+    fillOperatorDemo: string
+    fillAdminDemo: string
+    demoCredentialsNote: string
+    requestStaffTab: string
+    requestStaffHeading: string
+    requestStaffDesc: string
+    departmentNoteLabel: string
+    departmentNotePlaceholder: string
+    submitStaffRequestBtn: string
+    submittingStaffRequest: string
+    staffRequestSuccess: string
+    accountPendingTitle: string
+    accountPendingDesc: string
+    backToStaffLogin: string
+    dontHaveStaffAccount: string
   }
   operator: {
     heading: string
@@ -185,6 +200,22 @@ export interface TranslationDictionary {
     colCategory: string
     colAddress: string
     colStatus: string
+    staffManagementHeading: string
+    staffManagementSubheading: string
+    colStaffUser: string
+    colStaffEmail: string
+    colStaffRole: string
+    colStaffStatus: string
+    colStaffAction: string
+    statusActive: string
+    statusPending: string
+    approveStaffBtn: string
+    approvingStaff: string
+    provisionStaffBtn: string
+    provisionRoleLabel: string
+    provisionSuccess: string
+    activationSuccess: string
+    noStaffUsers: string
   }
   health: {
     title: string
@@ -240,6 +271,38 @@ export interface TranslationDictionary {
     timelineWaiting: string
     timelineServing: string
     timelineCompleted: string
+  }
+  planner: {
+    badge: string
+    title: string
+    subtitle: string
+    selectServicePrompt: string
+    arrivalWindowHeading: string
+    suggestedArrival: string
+    confidenceLabel: string
+    telemetryFreshness: string
+    assumptionsHeading: string
+    disclaimerHeading: string
+    staleDataNotice: string
+    checklistHeading: string
+    verifiedSourceLabel: string
+    verificationDateLabel: string
+    viewOfficialPortal: string
+    checklistDisclaimer: string
+    checklistProgress: string
+    allReady: string
+    originalOnly: string
+    photocopyOnly: string
+    bothOriginalAndPhotocopy: string
+    mandatoryBadge: string
+    optionalBadge: string
+    conditionalBadge: string
+    verifiedStatus: string
+    partiallyVerifiedStatus: string
+    unverifiedStatus: string
+    partiallyVerifiedNotice: string
+    unverifiedChecklistNotice: string
+    planVisitBtn: string
   }
   categories: Record<string, string>
 }

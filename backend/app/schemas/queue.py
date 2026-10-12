@@ -79,6 +79,10 @@ class QueueSessionResponse(BaseModel):
     user_id: str | None
     user_uuid: uuid.UUID | None = None
     status: QueueSessionStatus
+    position: int | None = Field(
+        default=None,
+        description="1-based position in waiting line if waiting",
+    )
     checked_in_at: datetime
     service_started_at: datetime | None
     completed_at: datetime | None
@@ -176,3 +180,12 @@ class UserQueueStatusResponse(BaseModel):
             "Indicates whether queue metrics are demo/simulated rather than live facility telemetry"
         ),
     )
+
+
+class OperatorDeskResponse(BaseModel):
+    """Operational desk status including waiting queue and seated participant."""
+
+    service: ServiceResponse
+    active_session: QueueSessionResponse | None = None
+    waiting_sessions: list[QueueSessionResponse] = Field(default_factory=list)
+    waiting_count: int = 0
