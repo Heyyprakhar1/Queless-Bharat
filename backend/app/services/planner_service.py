@@ -24,7 +24,6 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
     "driving_licence_renewal": {
         "match_substrings": [
             "driving licence renewal",
-            "licence renewal",
             "driving license renewal",
         ],
         "source_title": "Ministry of Road Transport and Highways (MoRTH) / Sarathi Parivahan",
@@ -86,7 +85,12 @@ _VERIFIED_CHECKLIST_CATALOG: dict[str, dict] = {
         ],
     },
     "aadhaar_identity_update": {
-        "match_substrings": ["aadhaar", "identity update", "identity modification"],
+        "match_substrings": [
+            "aadhaar & identity update",
+            "aadhaar card & identity modification",
+            "aadhaar update",
+            "aadhaar modification",
+        ],
         "source_title": "Unique Identification Authority of India (UIDAI)",
         "source_url": (
             "https://uidai.gov.in/en/my-aadhaar/about-your-aadhaar/updating-data-on-aadhaar.html"
@@ -216,15 +220,15 @@ class PlannerService:
                 reason="All service counters are currently closed or halted.",
             )
 
-        # 3. Check for stale data (> 1800 seconds / 30 minutes)
-        if freshness_sec is not None and freshness_sec > 1800:
+        # 3. Check for stale data (> 1800 seconds / 30 minutes) or missing freshness timestamp
+        if freshness_sec is None or freshness_sec > 1800:
             return ArrivalWindowRecommendation(
                 is_recommended=False,
                 confidence=est.confidence,
                 data_freshness_seconds=freshness_sec,
                 last_updated=now,
                 reason=(
-                    "Queue telemetry is stale (>30 minutes old). "
+                    "Queue telemetry is stale (>30 minutes old) or freshness is unavailable. "
                     "An arrival window cannot be reliably projected."
                 ),
             )

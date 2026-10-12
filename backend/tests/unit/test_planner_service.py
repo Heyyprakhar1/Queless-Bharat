@@ -235,6 +235,88 @@ def test_arrival_window_zero_active_counters_rejection():
     assert recommendation.window_start_minutes is None
 
 
+def test_arrival_window_missing_freshness_rejection():
+    """Verifies missing freshness timestamp (None) rejects recommendation truthfully."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    mock_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        freshness_seconds=None,  # type: ignore[arg-type]
+    )
+
+    recommendation = planner._calculate_arrival_window(mock_status, datetime.now(UTC))
+
+    assert recommendation.is_recommended is False
+    reason_str = (recommendation.reason or "").lower()
+    assert "freshness is unavailable" in reason_str or "stale" in reason_str
+    assert recommendation.window_start_minutes is None
+
+
+def test_arrival_window_empty_queue_near_zero_wait():
+    """Verifies empty queue (0 people waiting) produces valid low-congestion arrival window."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    mock_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=0.0,
+        upper_minutes=0.0,
+        expected_minutes=0.0,
+        active_counters=3,
+        people_ahead=0,
+        freshness_seconds=30,
+    )
+
+    recommendation = planner._calculate_arrival_window(mock_status, datetime.now(UTC))
+
+    assert recommendation.is_recommended is True
+    assert recommendation.window_start_minutes == 5
+    assert recommendation.window_end_minutes == 15
+    assert recommendation.suggested_arrival_text == "Within 5–15 minutes"
+
+
+def test_arrival_window_high_congestion_wide_buffer():
+    """Verifies high wait (>45 min) calculates appropriate wider planning buffer."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    mock_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=40.0,
+        upper_minutes=80.0,
+        expected_minutes=60.0,
+        active_counters=2,
+        people_ahead=35,
+        freshness_seconds=120,
+    )
+
+    recommendation = planner._calculate_arrival_window(mock_status, datetime.now(UTC))
+
+    assert recommendation.is_recommended is True
+    assert recommendation.window_start_minutes >= 15
+    assert recommendation.window_end_minutes > recommendation.window_start_minutes
+    assert recommendation.suggested_arrival_text is not None
+
+
+def test_checklist_resolution_no_false_positive_for_trade_licence():
+    """Verifies Trade Licence does NOT falsely trigger Driving Licence checklist."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    checklist = planner._resolve_document_checklist(
+        service_id, "Trade Licence & Commercial Property Tax"
+    )
+
+    assert checklist.has_verified_checklist is False
+    assert len(checklist.items) == 0
+
+
 @pytest.mark.asyncio
 async def test_get_visit_plan_not_found():
     """Verifies ResourceNotFoundError when querying non-existent service ID."""
