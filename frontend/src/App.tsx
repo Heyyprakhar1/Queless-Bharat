@@ -36,6 +36,7 @@ import {
   IndianFlag,
   OperatorDesk,
   Sidebar,
+  SmartVisitPlanner,
   TricolourWatermarkFlow,
 } from './components'
 import type { SidebarTab } from './components/Sidebar'
@@ -717,6 +718,20 @@ function AppContent() {
                     loadDemoQueueStatus(selectedDemoServiceId)
                   }
                 }}
+              />
+
+              {/* M6.3 Smart Visit Planner (Arrival Window & Document Readiness Checklist) */}
+              <SmartVisitPlanner
+                serviceId={selectedDemoServiceId || selectedServiceId || null}
+                serviceName={
+                  facilityServices.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                  services.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                  null
+                }
+                facilityName={
+                  facilities.find((f) => f.id === selectedFacilityId)?.name || null
+                }
+                cityName={selectedCity || null}
               />
             </div>
 

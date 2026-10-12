@@ -61,12 +61,14 @@ export interface QueueSession {
   updated_at: string
 }
 
+export type EstimateConfidence = 'LOW' | 'MEDIUM' | 'HIGH'
+
 export interface WaitEstimate {
   is_available: boolean
   lower_minutes?: number | null
   upper_minutes?: number | null
   expected_minutes?: number | null
-  confidence?: 'LOW' | 'MEDIUM' | 'HIGH' | null
+  confidence?: EstimateConfidence | null
   sample_size: number
   freshness_seconds?: number | null
   model_version: string

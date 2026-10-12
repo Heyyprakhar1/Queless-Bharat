@@ -241,5 +241,32 @@ export interface TranslationDictionary {
     timelineServing: string
     timelineCompleted: string
   }
+  planner: {
+    badge: string
+    title: string
+    subtitle: string
+    selectServicePrompt: string
+    arrivalWindowHeading: string
+    suggestedArrival: string
+    confidenceLabel: string
+    telemetryFreshness: string
+    assumptionsHeading: string
+    disclaimerHeading: string
+    staleDataNotice: string
+    checklistHeading: string
+    verifiedSourceLabel: string
+    verificationDateLabel: string
+    viewOfficialPortal: string
+    checklistDisclaimer: string
+    checklistProgress: string
+    allReady: string
+    originalOnly: string
+    photocopyOnly: string
+    bothOriginalAndPhotocopy: string
+    mandatoryBadge: string
+    optionalBadge: string
+    unverifiedChecklistNotice: string
+    planVisitBtn: string
+  }
   categories: Record<string, string>
 }

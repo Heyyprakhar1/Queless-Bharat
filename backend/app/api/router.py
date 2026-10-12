@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, counters, health, locations, queue, services
+from app.api.v1.endpoints import auth, counters, health, locations, planner, queue, services
 
 api_router = APIRouter()
 
@@ -11,6 +11,7 @@ api_router.include_router(health.router, tags=["Health"])
 api_router.include_router(auth.router, tags=["Authentication"])
 api_router.include_router(locations.router, tags=["Locations"])
 api_router.include_router(services.router, tags=["Services"])
+api_router.include_router(planner.router, tags=["Visit Planner"])
 api_router.include_router(counters.router, tags=["Counters"])
 api_router.include_router(queue.router, tags=["Queue"])
 

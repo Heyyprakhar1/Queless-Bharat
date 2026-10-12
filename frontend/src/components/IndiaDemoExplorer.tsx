@@ -622,20 +622,36 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
             </div>
           )}
 
-          {/* Primary Action Button: Proceed to Token Desk */}
+          {/* Primary Action Buttons: Plan Visit & Proceed to Token Desk */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {t('queue.readyToTakeSpot')}
             </span>
-            <button
-              id="btn-test-in-token-desk"
-              type="button"
-              onClick={() => onTestServiceInTokenDesk(selectedDemoService.id)}
-              className="w-full sm:w-auto px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center space-x-1.5 select-none"
-            >
-              <span>{t('queue.issueTokenForService')}</span>
-              <span>&rarr;</span>
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <button
+                id="btn-plan-visit"
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('smart-visit-planner-section')
+                  el?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl transition cursor-pointer flex items-center justify-center space-x-1.5 select-none"
+              >
+                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>{t('planner.planVisitBtn')}</span>
+              </button>
+              <button
+                id="btn-test-in-token-desk"
+                type="button"
+                onClick={() => onTestServiceInTokenDesk(selectedDemoService.id)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center space-x-1.5 select-none"
+              >
+                <span>{t('queue.issueTokenForService')}</span>
+                <span>&rarr;</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : (
