@@ -14,7 +14,7 @@ These workflows have strict correctness requirements:
 While NoSQL databases offer horizontal scale, they sacrifice relational constraints, transactional consistency, and rich querying capabilities, which are essential for managing civic queue lifecycles.
 
 ## Decision
-We will use **PostgreSQL** as the primary system-of-record relational database for QueueLess Bharat, hosted in production on Amazon RDS PostgreSQL.
+We will use **PostgreSQL** as the primary system-of-record relational database for QueuelessBharat, hosted in production on Amazon RDS PostgreSQL.
 
 PostgreSQL will manage all core entities:
 - Users and authentication/trust metadata

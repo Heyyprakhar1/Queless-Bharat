@@ -14,7 +14,7 @@ Engineers frequently introduce WebSockets or Server-Sent Events (SSE) by default
 - Incompatibility with standard HTTP caching and simple edge reverse proxies.
 
 ## Decision
-QueueLess Bharat will adopt **HTTP Short Polling** as its initial real-time update strategy.
+QueuelessBharat will adopt **HTTP Short Polling** as its initial real-time update strategy.
 
 The frontend client will query the queue status API at appropriate, configurable intervals (e.g., every 30 to 60 seconds when a user is actively viewing a queue screen, with exponential backoff when the browser tab is idle or backgrounded). Responses will leverage standard HTTP cache headers (`Cache-Control`, `ETag`, `Last-Modified`) to allow 304 Not Modified responses when state has not changed.
 

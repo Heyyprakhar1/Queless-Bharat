@@ -96,7 +96,7 @@ def _filter_iqr_outliers(values: list[float]) -> tuple[list[float], int]:
 
 
 class DeterministicQueueEstimator:
-    """Deterministic wait-time estimator implementing QueueLess Bharat Engine V1."""
+    """Deterministic wait-time estimator implementing QueuelessBharat Engine V1."""
 
     def __init__(self, model_version: str = MODEL_VERSION) -> None:
         self.model_version = model_version

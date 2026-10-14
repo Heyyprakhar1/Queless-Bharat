@@ -2,9 +2,9 @@ name: CI & Release Engineering Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -78,13 +78,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: queless_db
+          POSTGRES_DB: queless_test
           POSTGRES_USER: queless_user
           POSTGRES_PASSWORD: queless_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U queless_user -d queless_db"
+          --health-cmd "pg_isready -U queless_user -d queless_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -113,7 +113,7 @@ jobs:
           POSTGRES_PORT: 5432
           POSTGRES_USER: queless_user
           POSTGRES_PASSWORD: queless_password
-          POSTGRES_DB: queless_db
+          POSTGRES_DB: queless_test
           ENVIRONMENT: development
           AUTH_SECRET_KEY: test-secret-key-at-least-32-characters-for-ci-tests!
         run: |
@@ -123,11 +123,12 @@ jobs:
 
       - name: Run Pytest test suite with coverage
         env:
+          TESTING: "true"
           POSTGRES_SERVER: localhost
           POSTGRES_PORT: 5432
           POSTGRES_USER: queless_user
           POSTGRES_PASSWORD: queless_password
-          POSTGRES_DB: queless_db
+          POSTGRES_DB: queless_test
           ENVIRONMENT: development
           AUTH_SECRET_KEY: test-secret-key-at-least-32-characters-for-ci-tests!
         run: |

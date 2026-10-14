@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_operator, get_current_user
@@ -15,10 +15,13 @@ from app.schemas.queue import (
     CancelQueueRequest,
     CheckInRequest,
     CompleteServiceRequest,
+    OperatorDeskResponse,
     QueueSessionResponse,
     StartServiceRequest,
     UserQueueStatusResponse,
 )
+from app.schemas.service import ServiceResponse
+from app.services.catalog_service import CatalogService
 from app.services.estimation_service import EstimationService
 from app.services.queue_service import QueueService
 
@@ -70,6 +73,114 @@ async def check_in(
         idempotency_key=data.idempotency_key,
     )
     return QueueSessionResponse.model_validate(queue_session)
+
+
+@router.get("/services/{service_id}/waiting", response_model=list[QueueSessionResponse])
+async def list_waiting_sessions(
+    service_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_operator)],
+) -> list[QueueSessionResponse]:
+    """List all waiting queue sessions for a service in arrival order (Operator / Admin only)."""
+    if current_user.role == UserRole.OPERATOR:
+        if current_user.assigned_service_id and service_id != current_user.assigned_service_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Operator is not assigned to this service",
+            )
+
+    service = QueueService(db)
+    waiting = await service.get_waiting_sessions(service_id)
+    responses = []
+    for idx, s in enumerate(waiting):
+        resp = QueueSessionResponse.model_validate(s)
+        resp.position = idx + 1
+        responses.append(resp)
+    return responses
+
+
+@router.get("/services/{service_id}/desk", response_model=OperatorDeskResponse)
+async def get_operator_desk(
+    service_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_operator)],
+) -> OperatorDeskResponse:
+    """Retrieve operational desk status including waiting queue and seated participant
+    (Operator / Admin only).
+    """
+    if current_user.role == UserRole.OPERATOR:
+        if current_user.assigned_service_id and service_id != current_user.assigned_service_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Operator is not assigned to this service",
+            )
+
+    catalog = CatalogService(db)
+    svc = await catalog.get_service(service_id)
+
+    queue_svc = QueueService(db)
+    waiting = await queue_svc.get_waiting_sessions(service_id)
+    active = await queue_svc.get_active_session(service_id)
+
+    waiting_responses = []
+    for idx, s in enumerate(waiting):
+        resp = QueueSessionResponse.model_validate(s)
+        resp.position = idx + 1
+        waiting_responses.append(resp)
+
+    return OperatorDeskResponse(
+        service=ServiceResponse.model_validate(svc),
+        active_session=QueueSessionResponse.model_validate(active) if active else None,
+        waiting_sessions=waiting_responses,
+        waiting_count=len(waiting),
+    )
+
+
+@router.get("/operator/desk", response_model=OperatorDeskResponse)
+async def get_my_operator_desk(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_operator)],
+    service_id: Annotated[uuid.UUID | None, Query(description="Service identifier")] = None,
+) -> OperatorDeskResponse:
+    """Retrieve operator desk state for current operator's assigned service
+    (or query service_id).
+    """
+    target_service_id = service_id or current_user.assigned_service_id
+    if not target_service_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="service_id must be specified when operator has no assigned service",
+        )
+
+    if current_user.role == UserRole.OPERATOR:
+        if (
+            current_user.assigned_service_id
+            and target_service_id != current_user.assigned_service_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Operator is not assigned to this service",
+            )
+
+    catalog = CatalogService(db)
+    svc = await catalog.get_service(target_service_id)
+
+    queue_svc = QueueService(db)
+    waiting = await queue_svc.get_waiting_sessions(target_service_id)
+    active = await queue_svc.get_active_session(target_service_id)
+
+    waiting_responses = []
+    for idx, s in enumerate(waiting):
+        resp = QueueSessionResponse.model_validate(s)
+        resp.position = idx + 1
+        waiting_responses.append(resp)
+
+    return OperatorDeskResponse(
+        service=ServiceResponse.model_validate(svc),
+        active_session=QueueSessionResponse.model_validate(active) if active else None,
+        waiting_sessions=waiting_responses,
+        waiting_count=len(waiting),
+    )
 
 
 @router.get("/{session_id}", response_model=QueueSessionResponse)

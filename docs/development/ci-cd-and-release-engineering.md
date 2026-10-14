@@ -1,12 +1,12 @@
 # Container, CI & Release Engineering Guide
 
-This document outlines the container architecture, local Docker Compose operations, automated GitHub Actions CI pipeline, and release engineering standards for QueueLess Bharat.
+This document outlines the container architecture, local Docker Compose operations, automated GitHub Actions CI pipeline, and release engineering standards for QueuelessBharat.
 
 ---
 
 ## 1. Scope & Architectural Boundaries
 
-To maintain rigorous engineering terminology, QueueLess Bharat strictly distinguishes between **Continuous Integration (CI)**, **Release Engineering**, and **Continuous Delivery (CD)**:
+To maintain rigorous engineering terminology, QueuelessBharat strictly distinguishes between **Continuous Integration (CI)**, **Release Engineering**, and **Continuous Delivery (CD)**:
 
 | Discipline | In Scope (Milestone 5) | Description & Components |
 |:---|:---:|:---|
@@ -36,7 +36,7 @@ To maintain rigorous engineering terminology, QueueLess Bharat strictly distingu
 
 ## 2. Container Architecture
 
-QueueLess Bharat packages both frontend and backend into minimal, production-hardened, non-root multi-stage Docker images.
+QueuelessBharat packages both frontend and backend into minimal, production-hardened, non-root multi-stage Docker images.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

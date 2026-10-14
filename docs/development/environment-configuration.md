@@ -7,7 +7,7 @@
 
 ## 1. Configuration Philosophy
 
-QueueLess Bharat follows the [Twelve-Factor App](https://12factor.net/config) methodology for configuration management. Configuration that varies between deployment environments (such as database credentials, hostnames, log levels, and external API keys) must be strictly decoupled from application source code.
+QueuelessBharat follows the [Twelve-Factor App](https://12factor.net/config) methodology for configuration management. Configuration that varies between deployment environments (such as database credentials, hostnames, log levels, and external API keys) must be strictly decoupled from application source code.
 
 ### Core Tenets
 1. **Zero Hardcoded Configuration:** Application source code must not contain environment-specific hostnames, port numbers, or operational flags hardcoded in logic.

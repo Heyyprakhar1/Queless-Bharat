@@ -1,5 +1,6 @@
 import type {
   Location,
+  OperatorDeskResponse,
   QueueSession,
   QueueStatusResponse,
   Service,
@@ -217,6 +218,50 @@ export async function cancelQueueSession(
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null)
     throw new Error(errorBody?.detail || `Failed to cancel session: HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Fetches the operator desk state (service info, active seated session, waiting queue).
+ */
+export async function fetchOperatorDesk(serviceId?: string): Promise<OperatorDeskResponse> {
+  const url = serviceId
+    ? `${API_BASE_URL}/api/v1/queue/services/${encodeURIComponent(serviceId)}/desk`
+    : `${API_BASE_URL}/api/v1/queue/operator/desk`
+  const response = await fetchWithTimeout(url, {
+    headers: {
+      Accept: 'application/json',
+      ...getAuthHeaders(),
+    },
+  })
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(
+      errorBody?.detail || `Failed to fetch operator desk: HTTP ${response.status}`
+    )
+  }
+  return response.json()
+}
+
+/**
+ * Fetches waiting queue sessions for a specific service in arrival order.
+ */
+export async function fetchWaitingSessions(serviceId: string): Promise<QueueSession[]> {
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/api/v1/queue/services/${encodeURIComponent(serviceId)}/waiting`,
+    {
+      headers: {
+        Accept: 'application/json',
+        ...getAuthHeaders(),
+      },
+    }
+  )
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(
+      errorBody?.detail || `Failed to fetch waiting sessions: HTTP ${response.status}`
+    )
   }
   return response.json()
 }

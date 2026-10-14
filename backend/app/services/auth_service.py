@@ -11,7 +11,11 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from app.domain.enums import UserRole
 from app.domain.exceptions import DomainError, ResourceNotFoundError
 from app.domain.models import Service, User, UserIdentity
-from app.schemas.auth import AdminCreateUserRequest, CitizenRegisterRequest
+from app.schemas.auth import (
+    AdminCreateUserRequest,
+    CitizenRegisterRequest,
+    StaffRegisterRequest,
+)
 
 
 class AuthService:
@@ -19,6 +23,33 @@ class AuthService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def request_staff_account(self, data: StaffRegisterRequest) -> User:
+        """Self-service staff account request.
+        Strictly creates an unapproved, inactive account (is_active=False) with role OPERATOR.
+        Admin role cannot be self-requested.
+        """
+        # 1. Uniqueness check
+        stmt = select(User).where(User.email == data.email.lower())
+        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            raise DomainError(f"User with email '{data.email}' already exists")
+
+        # 2. Secure password hashing
+        hashed_pw = get_password_hash(data.password)
+
+        user = User(
+            email=data.email.lower(),
+            full_name=data.full_name,
+            hashed_password=hashed_pw,
+            role=UserRole.OPERATOR,
+            is_active=False,
+            assigned_service_id=None,
+        )
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
     async def register_citizen(self, data: CitizenRegisterRequest) -> User:
         """Public registration: strictly creates an unprivileged CITIZEN identity."""
@@ -92,7 +123,10 @@ class AuthService:
             raise DomainError("Invalid email or password")
 
         if not user.is_active:
-            raise DomainError("Account is inactive")
+            raise DomainError(
+                "Account is pending administrator approval or inactive. "
+                "Please contact your system administrator."
+            )
 
         token = create_access_token(
             subject=str(user.id),
@@ -241,3 +275,22 @@ class AuthService:
         """Retrieves user entity by identifier."""
         stmt = select(User).where(User.id == user_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def list_users(self, is_active: bool | None = None) -> list[User]:
+        """Lists users, optionally filtered by active status for administrator review."""
+        stmt = select(User).order_by(User.created_at.desc())
+        if is_active is not None:
+            stmt = stmt.where(User.is_active == is_active)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def activate_user(self, user_id: uuid.UUID) -> User:
+        """Activates a pending or inactive user identity."""
+        stmt = select(User).where(User.id == user_id)
+        user = (await self.session.execute(stmt)).scalar_one_or_none()
+        if not user:
+            raise ResourceNotFoundError("User", str(user_id))
+        user.is_active = True
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user

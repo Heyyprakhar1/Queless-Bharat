@@ -87,7 +87,7 @@ async function loginAsCitizenHelper(
   await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
 }
 
-test.describe('QueueLess Bharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
+test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())
@@ -238,20 +238,19 @@ test.describe('QueueLess Bharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => 
     // Check operator role indicator shows restricted for Citizen
     await expect(page.locator('#operator-role-indicator')).toContainText('Staff Restricted')
 
-    // Citizen attempts to start service -> Must be rejected with 403
-    const startPromise = page.waitForResponse(
-      (resp) => resp.url().includes('/start') && resp.status() === 403
-    )
-    await page.click('#btn-operator-start')
-    const startResp = await startPromise
-    const errBody = await startResp.json()
-    expect(errBody.detail).toContain('lacks permission for this action')
+    // Verify staff-only counter controls are disabled for Citizen
+    await expect(page.locator('#btn-operator-start')).toBeDisabled()
+    await expect(page.locator('#btn-operator-complete')).toBeDisabled()
 
-    // UI displays browser-visible rejection error
-    await expect(page.locator('#operator-message')).toBeVisible()
-    await expect(page.locator('#operator-message')).toContainText(
-      'lacks permission for this action'
-    )
+    // Verify direct API call by Citizen is rejected with 403 Forbidden by backend RBAC
+    const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
+    const sessionId = await page.evaluate(() => localStorage.getItem('queless_active_session_id'))
+    const rbacResp = await request.post(`${BACKEND_URL}/api/v1/queue/${sessionId}/start`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(rbacResp.status()).toBe(403)
+    const errBody = await rbacResp.json()
+    expect(errBody.detail).toContain('lacks permission for this action')
 
     // Ticket status remains WAITING
     await expect(page.getByText('WAITING IN LINE', { exact: true })).toBeVisible()

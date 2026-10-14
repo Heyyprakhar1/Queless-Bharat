@@ -30,6 +30,8 @@ RUN npm run build
 # ==============================================================================
 FROM nginx:1.27-alpine AS runner
 
+LABEL org.opencontainers.image.authors="Prakhar Srivastava <srivprak0106@gmail.com>"
+
 # Patch base OS packages and remove default boilerplate
 RUN apk --no-cache upgrade && rm -rf /usr/share/nginx/html/*
 

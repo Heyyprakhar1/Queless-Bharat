@@ -158,3 +158,22 @@ class TestRateLimiter:
 
         assert exc_info.value.status_code == 429
         assert "poll_service" in exc_info.value.detail
+
+    async def test_visit_plan_rate_limiter_blocks_excessive_requests(self, monkeypatch):
+        """Verifies visit_plan scope enforces configured rate limits."""
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        settings = get_settings()
+        monkeypatch.setattr(settings, "RATE_LIMIT_VISIT_PLAN_MAX", 2)
+        monkeypatch.setattr(settings, "RATE_LIMIT_VISIT_PLAN_WINDOW", 60)
+
+        limiter = SlidingWindowRateLimiter(max_requests=10, window_seconds=60, scope="visit_plan")
+        req = make_mock_request()
+
+        await limiter(req)
+        await limiter(req)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await limiter(req)
+
+        assert exc_info.value.status_code == 429
+        assert "visit_plan" in exc_info.value.detail

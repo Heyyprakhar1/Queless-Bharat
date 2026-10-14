@@ -9,7 +9,7 @@ from app.core.config import Settings, _parse_origins
 def test_default_settings() -> None:
     """Verifies default configuration properties are appropriately initialized."""
     settings = Settings()
-    assert settings.PROJECT_NAME == "QueueLess Bharat"
+    assert settings.PROJECT_NAME == "QueuelessBharat"
     assert settings.API_V1_STR == "/api/v1"
     assert settings.ENVIRONMENT in {"development", "staging", "production"}
     assert isinstance(settings.ALLOWED_ORIGINS, list)

@@ -53,6 +53,7 @@ export interface QueueSession {
   service_id: string
   user_id?: string | null
   status: QueueSessionStatus
+  position?: number | null
   checked_in_at: string
   service_started_at?: string | null
   completed_at?: string | null
@@ -61,12 +62,14 @@ export interface QueueSession {
   updated_at: string
 }
 
+export type EstimateConfidence = 'LOW' | 'MEDIUM' | 'HIGH'
+
 export interface WaitEstimate {
   is_available: boolean
   lower_minutes?: number | null
   upper_minutes?: number | null
   expected_minutes?: number | null
-  confidence?: 'LOW' | 'MEDIUM' | 'HIGH' | null
+  confidence?: EstimateConfidence | null
   sample_size: number
   freshness_seconds?: number | null
   model_version: string
@@ -97,4 +100,11 @@ export interface UserQueueStatusResponse {
   queue_state: QueueStateSummary
   estimated_wait: WaitEstimate
   is_simulated?: boolean
+}
+
+export interface OperatorDeskResponse {
+  service: Service
+  active_session: QueueSession | null
+  waiting_sessions: QueueSession[]
+  waiting_count: number
 }

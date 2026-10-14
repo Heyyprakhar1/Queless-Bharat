@@ -7,7 +7,7 @@
 
 ## 1. Core Principles
 
-QueueLess Bharat operates under a strict, non-negotiable set of security engineering principles designed to protect citizen privacy, maintain infrastructure integrity, and ensure platform availability:
+QueuelessBharat operates under a strict, non-negotiable set of security engineering principles designed to protect citizen privacy, maintain infrastructure integrity, and ensure platform availability:
 
 ### 1. Zero Secrets in Git
 - Under no circumstances may credentials, database passwords, private keys, API tokens, or secrets be committed to version control.

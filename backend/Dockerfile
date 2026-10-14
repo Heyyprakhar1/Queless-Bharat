@@ -21,6 +21,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 # ==============================================================================
 FROM python:3.12-slim AS runner
 
+LABEL org.opencontainers.image.authors="Prakhar Srivastava <srivprak0106@gmail.com>"
+
 WORKDIR /app
 
 # Create unprivileged system group and user

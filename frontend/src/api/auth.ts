@@ -1,4 +1,12 @@
-import type { GoogleAuthConfig, LoginCredentials, RegisterData, TokenResponse, User } from '../types/auth'
+import type {
+  AdminCreateUserData,
+  GoogleAuthConfig,
+  LoginCredentials,
+  RegisterData,
+  StaffRegisterData,
+  TokenResponse,
+  User,
+} from '../types/auth'
 import { API_BASE_URL, fetchWithTimeout } from './client'
 
 const TOKEN_KEY = 'queless_access_token'
@@ -158,4 +166,78 @@ export async function logout(): Promise<void> {
     }
   }
   clearAuthSession()
+}
+
+export async function requestStaffAccount(data: StaffRegisterData): Promise<User> {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/staff-register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Staff registration request failed: HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function listUsers(isActive?: boolean): Promise<User[]> {
+  const token = getAuthToken()
+  const query = isActive !== undefined ? `?is_active=${isActive}` : ''
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/admin/users${query}`, {
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to fetch users: HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function activateUser(userId: string): Promise<User> {
+  const token = getAuthToken()
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/admin/users/${userId}/activate`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to activate user: HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function createPrivilegedUser(data: AdminCreateUserData): Promise<User> {
+  const token = getAuthToken()
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/v1/auth/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
+    throw new Error(errorBody?.detail || `Failed to provision user: HTTP ${response.status}`)
+  }
+
+  return response.json()
 }

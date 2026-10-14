@@ -4,14 +4,14 @@
 Accepted
 
 ## Context
-When designing QueueLess Bharat, we must balance long-term scalability and domain isolation with near-term delivery velocity, operational simplicity, infrastructure cost, and ease of debugging during hackathon and early-phase development.
+When designing QueuelessBharat, we must balance long-term scalability and domain isolation with near-term delivery velocity, operational simplicity, infrastructure cost, and ease of debugging during hackathon and early-phase development.
 
 A common industry temptation is to adopt microservices prematurely. However, distributed architectures introduce significant complexity: network latency, distributed transaction coordination, complex CI/CD pipelines, container orchestration overhead, and multi-service observability challenges.
 
-QueueLess Bharat requires distinct logical domains (API routing, queue state tracking, wait-time estimation engine, AI observation parsing, and relational persistence), but does not yet exhibit the organizational scale or divergent traffic profiles that justify distributed microservices.
+QueuelessBharat requires distinct logical domains (API routing, queue state tracking, wait-time estimation engine, AI observation parsing, and relational persistence), but does not yet exhibit the organizational scale or divergent traffic profiles that justify distributed microservices.
 
 ## Decision
-We will build the QueueLess Bharat backend as a **Modular Monolith**.
+We will build the QueuelessBharat backend as a **Modular Monolith**.
 
 All components will reside within a single repository and execute in a unified application runtime, but will be structured strictly along bounded module interfaces:
 - API / Presentation Layer

@@ -1,4 +1,4 @@
-"""Seed script for QueueLess Bharat development, testing, and India demo coverage (M6.1).
+"""Seed script for QueuelessBharat development, testing, and India demo coverage (M6.1).
 
 Populates:
 1. Platform test identities:
@@ -1863,6 +1863,18 @@ async def seed() -> None:
                         scenario=scenario,
                         now=now,
                     )
+
+        # Assign operator Rajesh to Admissions & Merit List Verification service
+        # for Pune showcase desk
+        admissions_stmt = select(Service).where(
+            Service.name == "Admissions & Merit List Verification"
+        )
+        admissions_svc = (await session.execute(admissions_stmt)).scalars().first()
+        if admissions_svc:
+            op.assigned_service_id = admissions_svc.id
+            print(
+                f"Assigned operator Rajesh to service: {admissions_svc.name} ({admissions_svc.id})"
+            )
 
         await session.commit()
         print("\nDatabase seed completed successfully with verified India demo coverage.")

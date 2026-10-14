@@ -1,4 +1,4 @@
-"""SQLAlchemy relational domain models for QueueLess Bharat."""
+"""SQLAlchemy relational domain models for QueuelessBharat."""
 
 import uuid
 from datetime import datetime

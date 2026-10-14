@@ -1,13 +1,13 @@
 # System Architecture Overview
 
 > **Status:** Architecture Design / Pre-Implementation Baseline
-> **System:** QueueLess Bharat
+> **System:** QueuelessBharat
 
 ---
 
 ## 1. Executive Summary
 
-QueueLess Bharat is a queue intelligence platform designed to bring transparency, predictability, and actionable decision support to public and civic waiting experiences (such as hospitals, Regional Transport Offices (RTOs), and municipal service centres).
+QueuelessBharat is a queue intelligence platform designed to bring transparency, predictability, and actionable decision support to public and civic waiting experiences (such as hospitals, Regional Transport Offices (RTOs), and municipal service centres).
 
 The platform does not attempt to artificially hide queues or promise immediate zero-wait access. Instead, it measures, models, and communicates queue status, throughput, freshness, and confidence-bounded wait-time estimates so that citizens can plan their visits effectively.
 
@@ -58,7 +58,7 @@ The core runtime architecture follows a layered, predictable request flow design
 
 ## 3. Assistive AI Pipeline & Boundaries
 
-QueueLess Bharat incorporates Artificial Intelligence exclusively as an **assistive, non-authoritative input adapter**. AI simplifies citizen reporting by parsing unstructured inputs (natural-language text descriptions, speech-to-text transcripts, or casual status updates) into structured schema objects.
+QueuelessBharat incorporates Artificial Intelligence exclusively as an **assistive, non-authoritative input adapter**. AI simplifies citizen reporting by parsing unstructured inputs (natural-language text descriptions, speech-to-text transcripts, or casual status updates) into structured schema objects.
 
 ```
 [ Natural-Language Citizen Input ] (e.g., "Counter 3 is moving fast, ~15 people waiting")

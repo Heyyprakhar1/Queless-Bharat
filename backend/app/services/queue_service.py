@@ -111,6 +111,32 @@ class QueueService:
             raise ResourceNotFoundError("QueueSession", str(session_id))
         return session_obj
 
+    async def get_waiting_sessions(self, service_id: uuid.UUID) -> list[QueueSession]:
+        """Retrieves all WAITING sessions for a service in arrival order."""
+        stmt = (
+            select(QueueSession)
+            .where(
+                QueueSession.service_id == service_id,
+                QueueSession.status == QueueSessionStatus.WAITING,
+            )
+            .order_by(QueueSession.checked_in_at.asc(), QueueSession.id.asc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_active_session(self, service_id: uuid.UUID) -> QueueSession | None:
+        """Retrieves the currently IN_SERVICE session for a service (if any)."""
+        stmt = (
+            select(QueueSession)
+            .where(
+                QueueSession.service_id == service_id,
+                QueueSession.status == QueueSessionStatus.IN_SERVICE,
+            )
+            .order_by(QueueSession.service_started_at.desc(), QueueSession.id.asc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
     async def start_service(
         self,
         session_id: uuid.UUID,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import {
   clearAuthSession,
@@ -19,6 +19,7 @@ import {
   completeService,
   fetchCities,
   fetchLocations,
+  fetchOperatorDesk,
   fetchQueueStatus,
   fetchServices,
   fetchUserQueueStatus,
@@ -36,6 +37,7 @@ import {
   IndianFlag,
   OperatorDesk,
   Sidebar,
+  SmartVisitPlanner,
   TricolourWatermarkFlow,
 } from './components'
 import type { SidebarTab } from './components/Sidebar'
@@ -45,6 +47,7 @@ import type { User } from './types/auth'
 import type { HealthResponse } from './types/health'
 import type {
   Location,
+  OperatorDeskResponse,
   QueueStatusResponse,
   Service,
   UserQueueStatusResponse,
@@ -79,12 +82,15 @@ function AppContent() {
   const [cities, setCities] = useState<string[]>([])
   const [selectedCity, setSelectedCity] = useState<string>('Pune')
   const [facilities, setFacilities] = useState<Location[]>([])
+  const [facilitiesLoading, setFacilitiesLoading] = useState<boolean>(false)
+  const [facilitiesError, setFacilitiesError] = useState<string | null>(null)
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>('')
   const [facilityServices, setFacilityServices] = useState<Service[]>([])
   const [selectedDemoServiceId, setSelectedDemoServiceId] = useState<string>('')
   const [demoQueueStatus, setDemoQueueStatus] = useState<QueueStatusResponse | null>(null)
   const [demoQueueLoading, setDemoQueueLoading] = useState<boolean>(false)
   const [demoQueueError, setDemoQueueError] = useState<string | null>(null)
+  const latestQueueServiceIdRef = useRef<string>('')
 
   // Citizen Interactive Flow State
   const [services, setServices] = useState<Service[]>([])
@@ -98,6 +104,7 @@ function AppContent() {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null)
   const [operatorMessage, setOperatorMessage] = useState<string | null>(null)
   const [operatorIsError, setOperatorIsError] = useState<boolean>(false)
+  const [deskData, setDeskData] = useState<OperatorDeskResponse | null>(null)
   const [activeNav, setActiveNav] = useState<SidebarTab>('findServices')
 
   // Validate session on load
@@ -190,35 +197,76 @@ function AppContent() {
     return () => clearInterval(interval)
   }, [])
 
+  // Load facilities for city
+  const loadFacilitiesForCity = useCallback(async (city: string) => {
+    if (!city) return
+    setFacilitiesLoading(true)
+    setFacilitiesError(null)
+    try {
+      const locs = await fetchLocations(city)
+      setFacilities(locs)
+      if (locs.length > 0) {
+        setSelectedFacilityId(locs[0].id)
+      } else {
+        setSelectedFacilityId('')
+        setFacilityServices([])
+        setSelectedDemoServiceId('')
+        setDemoQueueStatus(null)
+      }
+    } catch (err) {
+      setFacilitiesError(err instanceof Error ? err.message : 'Failed to load facilities')
+      setFacilities([])
+      setSelectedFacilityId('')
+      setFacilityServices([])
+      setSelectedDemoServiceId('')
+      setDemoQueueStatus(null)
+    } finally {
+      setFacilitiesLoading(false)
+    }
+  }, [])
+
+  // Cleanly switch city and clear all dependent state to prevent stale data
+  const handleSelectCity = (newCity: string) => {
+    if (newCity === selectedCity) {
+      if (facilities.length === 0) {
+        loadFacilitiesForCity(newCity)
+      }
+      return
+    }
+    setSelectedCity(newCity)
+    setSelectedFacilityId('')
+    setFacilities([])
+    setFacilityServices([])
+    setSelectedDemoServiceId('')
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+    setFacilitiesError(null)
+  }
+
+  // Cleanly switch facility and clear child services/queue state
+  const handleSelectFacility = (newFacilityId: string) => {
+    if (newFacilityId === selectedFacilityId) return
+    setSelectedFacilityId(newFacilityId)
+    setFacilityServices([])
+    setSelectedDemoServiceId('')
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+  }
+
+  // Cleanly switch demo service and reset queue status
+  const handleSelectDemoService = (newServiceId: string) => {
+    if (newServiceId === selectedDemoServiceId) return
+    setSelectedDemoServiceId(newServiceId)
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+  }
+
   // Load facilities when selected city changes
   useEffect(() => {
-    if (!selectedCity) return
-    let isCancelled = false
-    async function loadFacilitiesForCity() {
-      try {
-        const locs = await fetchLocations(selectedCity)
-        if (!isCancelled) {
-          setFacilities(locs)
-          if (locs.length > 0) {
-            setSelectedFacilityId(locs[0].id)
-          } else {
-            setSelectedFacilityId('')
-            setFacilityServices([])
-            setSelectedDemoServiceId('')
-            setDemoQueueStatus(null)
-          }
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          setDemoQueueError(err instanceof Error ? err.message : 'Failed to load facilities')
-        }
-      }
+    if (selectedCity) {
+      loadFacilitiesForCity(selectedCity)
     }
-    loadFacilitiesForCity()
-    return () => {
-      isCancelled = true
-    }
-  }, [selectedCity])
+  }, [selectedCity, loadFacilitiesForCity])
 
   // Load services when selected facility changes
   useEffect(() => {
@@ -239,6 +287,9 @@ function AppContent() {
       } catch (err) {
         if (!isCancelled) {
           setDemoQueueError(err instanceof Error ? err.message : 'Failed to load services')
+          setFacilityServices([])
+          setSelectedDemoServiceId('')
+          setDemoQueueStatus(null)
         }
       }
     }
@@ -248,19 +299,26 @@ function AppContent() {
     }
   }, [selectedFacilityId])
 
-  // Load queue status for explorer
+  // Load queue status for explorer with race condition prevention
   const loadDemoQueueStatus = async (serviceId: string) => {
     if (!serviceId) return
+    latestQueueServiceIdRef.current = serviceId
     setDemoQueueLoading(true)
     setDemoQueueError(null)
     try {
       const status = await fetchQueueStatus(serviceId)
-      setDemoQueueStatus(status)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueStatus(status)
+      }
     } catch (err) {
-      setDemoQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
-      setDemoQueueStatus(null)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
+        setDemoQueueStatus(null)
+      }
     } finally {
-      setDemoQueueLoading(false)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueLoading(false)
+      }
     }
   }
 
@@ -415,6 +473,7 @@ function AppContent() {
     await logout()
     setCurrentUser(null)
     setCurrentWorkspace('citizen')
+    setDeskData(null)
     setCitizenError(null)
     setOperatorMessage(null)
   }
@@ -448,6 +507,7 @@ function AppContent() {
       setActiveSessionId(session.id)
       localStorage.setItem('queless_active_session_id', session.id)
       await loadUserStatus(session.id)
+      await loadOperatorDesk(targetServiceId)
       if (selectedDemoServiceId) {
         await loadDemoQueueStatus(selectedDemoServiceId)
       }
@@ -464,6 +524,7 @@ function AppContent() {
     try {
       await cancelQueueSession(activeSessionId, 'Citizen cancelled via web portal')
       await loadUserStatus(activeSessionId)
+      await loadOperatorDesk()
       if (selectedDemoServiceId) {
         await loadDemoQueueStatus(selectedDemoServiceId)
       }
@@ -482,18 +543,60 @@ function AppContent() {
     setSessionNotice(null)
   }
 
-  // --- Operator Actions ---
+  // --- Operator Actions & Desk State ---
 
-  const handleOperatorStart = async () => {
-    if (!activeSessionId) return
+  const loadOperatorDesk = async (targetSvcId?: string) => {
+    if (!currentUser || (currentUser.role !== 'OPERATOR' && currentUser.role !== 'ADMIN')) {
+      return
+    }
+    const svcId =
+      targetSvcId ||
+      currentUser.assigned_service_id ||
+      selectedServiceId ||
+      selectedDemoServiceId
+    if (!svcId) return
+    try {
+      const data = await fetchOperatorDesk(svcId)
+      setDeskData(data)
+    } catch {
+      // Keep existing state
+    }
+  }
+
+  // Polling for Operator Desk when in staff workspace
+  useEffect(() => {
+    if (
+      currentWorkspace === 'staff' &&
+      (currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN')
+    ) {
+      loadOperatorDesk()
+      const timer = setInterval(() => {
+        loadOperatorDesk()
+      }, 5000)
+      return () => clearInterval(timer)
+    }
+  }, [currentWorkspace, currentUser, selectedServiceId, selectedDemoServiceId])
+
+  const handleOperatorStart = async (sessionId?: string) => {
+    if (currentUser?.role !== 'OPERATOR' && currentUser?.role !== 'ADMIN') {
+      return
+    }
+    const targetSessionId =
+      sessionId ||
+      deskData?.waiting_sessions?.[0]?.id ||
+      (userStatus?.session.status === 'WAITING' ? activeSessionId : '')
+    if (!targetSessionId) return
     setCitizenLoading(true)
     setOperatorMessage(null)
     setOperatorIsError(false)
     try {
-      await startService(activeSessionId)
+      await startService(targetSessionId)
       setOperatorMessage('Participant moved into service at counter.')
       setOperatorIsError(false)
-      await loadUserStatus(activeSessionId)
+      if (activeSessionId) {
+        await loadUserStatus(activeSessionId)
+      }
+      await loadOperatorDesk()
       if (selectedDemoServiceId) {
         await loadDemoQueueStatus(selectedDemoServiceId)
       }
@@ -505,16 +608,26 @@ function AppContent() {
     }
   }
 
-  const handleOperatorComplete = async () => {
-    if (!activeSessionId) return
+  const handleOperatorComplete = async (sessionId?: string) => {
+    if (currentUser?.role !== 'OPERATOR' && currentUser?.role !== 'ADMIN') {
+      return
+    }
+    const targetSessionId =
+      sessionId ||
+      deskData?.active_session?.id ||
+      (userStatus?.session.status === 'IN_SERVICE' ? activeSessionId : '')
+    if (!targetSessionId) return
     setCitizenLoading(true)
     setOperatorMessage(null)
     setOperatorIsError(false)
     try {
-      await completeService(activeSessionId)
+      await completeService(targetSessionId)
       setOperatorMessage('Service marked completed! Observation recorded for wait estimator.')
       setOperatorIsError(false)
-      await loadUserStatus(activeSessionId)
+      if (activeSessionId) {
+        await loadUserStatus(activeSessionId)
+      }
+      await loadOperatorDesk()
       if (selectedDemoServiceId) {
         await loadDemoQueueStatus(selectedDemoServiceId)
       }
@@ -545,7 +658,7 @@ function AppContent() {
           <div>
             <div className="flex items-center space-x-3">
               <span className="font-serif font-black text-2xl sm:text-3xl text-slate-950 dark:text-white tracking-tight">
-                QueueLess Bharat
+                QueuelessBharat
               </span>
               <IndianFlag className="w-7 h-4.5 rounded-xs shadow-2xs border border-slate-200 dark:border-slate-700" />
             </div>
@@ -657,25 +770,23 @@ function AppContent() {
                   </div>
                 </div>
 
-                {userStatus ? (
-                  <OperatorDesk
-                    currentUser={currentUser}
-                    userStatus={userStatus}
-                    citizenLoading={citizenLoading}
-                    operatorMessage={operatorMessage}
-                    operatorIsError={operatorIsError}
-                    onStartService={handleOperatorStart}
-                    onCompleteService={handleOperatorComplete}
-                    onRefreshStatus={() => loadUserStatus(activeSessionId)}
-                  />
-                ) : (
-                  <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 space-y-2">
-                    <p>{t('operator.noParticipantTitle')}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      {t('operator.noParticipantDesc')}
-                    </p>
-                  </div>
-                )}
+                <OperatorDesk
+                  currentUser={currentUser}
+                  deskData={deskData}
+                  userStatus={userStatus}
+                  services={services}
+                  selectedServiceId={selectedServiceId}
+                  onSelectService={(svcId) => {
+                    setSelectedServiceId(svcId)
+                    loadOperatorDesk(svcId)
+                  }}
+                  citizenLoading={citizenLoading}
+                  operatorMessage={operatorMessage}
+                  operatorIsError={operatorIsError}
+                  onStartService={handleOperatorStart}
+                  onCompleteService={handleOperatorComplete}
+                  onRefreshStatus={() => loadOperatorDesk()}
+                />
               </div>
             )}
           </main>
@@ -694,16 +805,21 @@ function AppContent() {
               <IndiaDemoExplorer
                 cities={cities}
                 selectedCity={selectedCity}
-                onSelectCity={setSelectedCity}
+                onSelectCity={handleSelectCity}
                 facilities={facilities}
                 selectedFacilityId={selectedFacilityId}
-                onSelectFacility={setSelectedFacilityId}
+                onSelectFacility={handleSelectFacility}
                 facilityServices={facilityServices}
                 selectedDemoServiceId={selectedDemoServiceId}
-                onSelectDemoService={setSelectedDemoServiceId}
+                onSelectDemoService={handleSelectDemoService}
                 demoQueueStatus={demoQueueStatus}
                 demoQueueLoading={demoQueueLoading}
                 demoQueueError={demoQueueError}
+                facilitiesLoading={facilitiesLoading}
+                facilitiesError={facilitiesError}
+                onRetryFacilities={() => {
+                  if (selectedCity) loadFacilitiesForCity(selectedCity)
+                }}
                 onTestServiceInTokenDesk={(serviceId) => {
                   setSelectedServiceId(serviceId)
                   setActiveNav('myTokens')
@@ -715,8 +831,26 @@ function AppContent() {
                 onCheckQueue={() => {
                   if (selectedDemoServiceId) {
                     loadDemoQueueStatus(selectedDemoServiceId)
+                    const waitEl = document.getElementById('demo-wait-projection')
+                    if (waitEl) {
+                      waitEl.scrollIntoView({ behavior: 'smooth' })
+                    }
                   }
                 }}
+              />
+
+              {/* M6.3 Smart Visit Planner (Arrival Window & Document Readiness Checklist) */}
+              <SmartVisitPlanner
+                serviceId={selectedDemoServiceId || selectedServiceId || null}
+                serviceName={
+                  facilityServices.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                  services.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                  null
+                }
+                facilityName={
+                  facilities.find((f) => f.id === selectedFacilityId)?.name || null
+                }
+                cityName={selectedCity || null}
               />
             </div>
 

@@ -1,7 +1,7 @@
 # Testing Strategy & Quality Assurance
 
 > **Status:** Engineering Standard / Pre-Implementation Baseline
-> **Scope:** Verification Standards for QueueLess Bharat
+> **Scope:** Verification Standards for QueuelessBharat
 
 ---
 
@@ -9,7 +9,7 @@
 
 In a civic queue intelligence system, algorithmic correctness, data consistency, and transactional safety directly impact real-world user trust. Testing must not be treated as an afterthought or confined to happy-path scenarios.
 
-QueueLess Bharat enforces a multi-layered testing pyramid with rigorous verification around queue state transitions, concurrent updates, mathematical bounds, and failure isolation.
+QueuelessBharat enforces a multi-layered testing pyramid with rigorous verification around queue state transitions, concurrent updates, mathematical bounds, and failure isolation.
 
 ---
 

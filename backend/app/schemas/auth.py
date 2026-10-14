@@ -18,6 +18,24 @@ class CitizenRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
 
 
+class StaffRegisterRequest(BaseModel):
+    """Payload for self-service staff account request.
+    Strictly creates an unapproved, inactive account (is_active=False) with role OPERATOR.
+    Must be reviewed and activated by an Administrator before login is permitted.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128, description="Minimum 8 characters")
+    full_name: str = Field(..., min_length=1, max_length=255)
+    department_note: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional note describing facility or counter role",
+    )
+
+
 class CitizenAccessRequest(BaseModel):
     """Payload for low-friction citizen onboarding and demo session access."""
 

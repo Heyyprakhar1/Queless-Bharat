@@ -30,6 +30,21 @@ export interface RegisterData {
   assigned_service_id?: string | null
 }
 
+export interface StaffRegisterData {
+  email: string
+  password: string
+  full_name: string
+  department_note?: string
+}
+
+export interface AdminCreateUserData {
+  email: string
+  password: string
+  full_name: string
+  role: UserRole
+  assigned_service_id?: string | null
+}
+
 export interface GoogleAuthConfig {
   enabled: boolean
   client_id: string | null
