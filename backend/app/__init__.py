@@ -1,1 +1,1 @@
-"""QueueLess Bharat application package."""
+"""QueuelessBharat application package."""

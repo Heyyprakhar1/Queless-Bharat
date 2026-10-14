@@ -1,4 +1,4 @@
-"""Seed script for QueueLess Bharat development, testing, and India demo coverage (M6.1).
+"""Seed script for QueuelessBharat development, testing, and India demo coverage (M6.1).
 
 Populates:
 1. Platform test identities:

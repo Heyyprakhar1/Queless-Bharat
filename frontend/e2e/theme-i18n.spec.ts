@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('QueueLess Bharat — Platform-Wide Dark/Light Theme & Multilingual Foundation', () => {
+test.describe('QueuelessBharat — Platform-Wide Dark/Light Theme & Multilingual Foundation', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage before each test for predictable initial state
     await page.goto('/')

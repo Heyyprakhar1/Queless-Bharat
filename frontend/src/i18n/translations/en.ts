@@ -17,7 +17,7 @@ export const en: TranslationDictionary = {
     showcase: 'Showcase',
   },
   header: {
-    appTitle: 'QueueLess Bharat',
+    appTitle: 'QueuelessBharat',
     urbanMarkets: '20 Urban Markets',
     tagline: 'Know Before You Go • Deterministic Indian Civic Queue Network',
     citizenPortal: 'Citizen Portal',
@@ -74,7 +74,7 @@ export const en: TranslationDictionary = {
     confidenceMedium: 'MEDIUM',
     confidenceLow: 'LOW',
     policyNote:
-      'QueueLess Bharat never fabricates false wait estimates without validated empirical service samples.',
+      'QueuelessBharat never fabricates false wait estimates without validated empirical service samples.',
     sampleBaseline: 'Sample Baseline: {count} completed throughput sessions',
     counterThroughput: 'Counter throughput: ~{rate} citizens/hour per active desk',
     notice: 'Notice:',
@@ -140,7 +140,7 @@ export const en: TranslationDictionary = {
     authNotice: 'Authentication Notice',
     verifiedCitizenEntry: 'Verified Citizen Entry',
     verifiedCitizenEntryDesc:
-      'Sign in with Google to issue, track, and manage your civic queue tokens. QueueLess verifies your identity through Google OpenID Connect to prevent impersonation and spot-hoarding.',
+      'Sign in with Google to issue, track, and manage your civic queue tokens. QueuelessBharat verifies your identity through Google OpenID Connect to prevent impersonation and spot-hoarding.',
     openIdScopeNote: 'Only standard OpenID profile and email scopes are requested.',
     staffPortalNotice:
       'Staff Portal: For counter operators and system administrators. Enter assigned credentials. Permissions are verified strictly by the backend.',
@@ -249,7 +249,7 @@ export const en: TranslationDictionary = {
     lastChecked: 'Last checked: {time}',
   },
   footer: {
-    title: 'QueueLess Bharat — M6.1 India Demo Coverage',
+    title: 'QueuelessBharat — M6.1 India Demo Coverage',
     subtitle:
       'Showcase Cities: Pune, Mumbai, Bengaluru, Chennai, Kolkata, Delhi, Lucknow, Patna • Pure Deterministic Queue Engine',
   },

@@ -87,7 +87,7 @@ async function loginAsCitizenHelper(
   await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
 }
 
-test.describe('QueueLess Bharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
+test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())

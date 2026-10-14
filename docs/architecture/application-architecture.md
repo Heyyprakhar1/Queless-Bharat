@@ -7,7 +7,7 @@
 
 ## 1. Architectural Style & Rationale
 
-QueueLess Bharat adopts a **Modular Monolith** architecture for its backend application. All core domain components reside within a single codebase and execute within a unified runtime process, organized strictly along distinct module and layer boundaries.
+QueuelessBharat adopts a **Modular Monolith** architecture for its backend application. All core domain components reside within a single codebase and execute within a unified runtime process, organized strictly along distinct module and layer boundaries.
 
 ### Why Not Microservices?
 

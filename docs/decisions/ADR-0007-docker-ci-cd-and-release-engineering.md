@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Following the completion of Milestones 1 through 4, QueueLess Bharat operates as a verified civic queue platform with deterministic wait-time estimation, stateful transactions, and Role-Based Access Control (RBAC). However, running the application previously relied on manual commands across separate terminal tabs (`uvicorn`, `npm run dev`, local Docker Postgres).
+Following the completion of Milestones 1 through 4, QueuelessBharat operates as a verified civic queue platform with deterministic wait-time estimation, stateful transactions, and Role-Based Access Control (RBAC). However, running the application previously relied on manual commands across separate terminal tabs (`uvicorn`, `npm run dev`, local Docker Postgres).
 
 To establish a production-grade DevOps baseline ready for future cloud infrastructure (e.g., AWS ECR, ECS/EKS), the system requires:
 1. Production-oriented Docker images that build deterministically and run with minimal attack surfaces.

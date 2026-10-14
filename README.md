@@ -1,10 +1,10 @@
-# QueueLess Bharat
+# QueuelessBharat
 
 > *"Make waiting more predictable, not pretend queues don't exist."*
 
-QueueLess Bharat is an open civic-tech platform designed to bring transparency, predictability, and actionable decision support to citizen waiting times across public service facilities in India—including municipal corporations, regional transport offices (RTOs), and government hospitals.
+QueuelessBharat is an open civic-tech platform designed to bring transparency, predictability, and actionable decision support to citizen waiting times across public service facilities in India—including municipal corporations, regional transport offices (RTOs), and government hospitals.
 
-Instead of making unrealistic claims of eliminating physical lines entirely, QueueLess Bharat provides citizens with deterministic wait projections, bounded uncertainty intervals, and digital queuing before they travel.
+Instead of making unrealistic claims of eliminating physical lines entirely, QueuelessBharat provides citizens with deterministic wait projections, bounded uncertainty intervals, and digital queuing before they travel.
 
 ---
 
@@ -107,7 +107,7 @@ npx playwright test
 
 ## Contributions
 
-Contributions to QueueLess Bharat are welcome! To contribute:
+Contributions to QueuelessBharat are welcome! To contribute:
 
 1. Fork the repository and create a feature branch (`git checkout -b feature/your-feature-name`).
 2. Adhere to code quality and testing standards:

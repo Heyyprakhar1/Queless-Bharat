@@ -1,4 +1,4 @@
-"""Cryptographic and token security utilities for QueueLess Bharat."""
+"""Cryptographic and token security utilities for QueuelessBharat."""
 
 from datetime import UTC, datetime, timedelta
 from typing import Any

@@ -522,7 +522,7 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
 
       {/* Advisory footnote */}
       <div className="text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-2 leading-tight">
-        QueueLess Bharat Digital Token Desk &bull; Deterministic Telemetry
+        QueuelessBharat Digital Token Desk &bull; Deterministic Telemetry
       </div>
     </Card>
   )

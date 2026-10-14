@@ -124,7 +124,9 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
       id="smart-visit-planner-section"
       className="relative overflow-hidden border-blue-200/60 dark:border-blue-900/40 bg-linear-to-b from-blue-50/20 via-white to-slate-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-850"
     >
-      <ChakraWatermark className="w-72 h-72 text-blue-950/[0.03] dark:text-blue-300/[0.02]" />
+      <div className="absolute -right-8 -top-8 pointer-events-none select-none z-0">
+        <ChakraWatermark className="w-56 h-56 sm:w-72 sm:h-72 text-blue-950/[0.03] dark:text-blue-300/[0.02]" />
+      </div>
 
       <CardHeader className="relative z-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -311,7 +313,7 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                         {plan.arrival_window.reason || t('planner.staleDataNotice')}
                       </p>
                       <p className="text-xs opacity-90">
-                        QueueLess Bharat strictly reports unavailable states rather than fabricating
+                        QueuelessBharat strictly reports unavailable states rather than fabricating
                         false arrival precision without validated live telemetry.
                       </p>
                     </div>

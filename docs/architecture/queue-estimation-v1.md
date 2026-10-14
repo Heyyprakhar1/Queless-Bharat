@@ -8,7 +8,7 @@
 
 ## 1. Overview & Architectural Principles
 
-QueueLess Bharat mandates that all numerical wait-time predictions are calculated strictly by **deterministic, mathematically verifiable application logic** residing in the Queue Engine.
+QueuelessBharat mandates that all numerical wait-time predictions are calculated strictly by **deterministic, mathematically verifiable application logic** residing in the Queue Engine.
 
 ### Core Non-Negotiables:
 1. **Zero Stochastic / AI Dependency:** AI models (LLMs, neural networks) are strictly excluded from calculating wait times, confidence scores, bounds, or overriding mathematical results.

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Runtime metadata
     ENVIRONMENT: str = "development"
-    PROJECT_NAME: str = "QueueLess Bharat"
+    PROJECT_NAME: str = "QueuelessBharat"
     API_V1_STR: str = "/api/v1"
     HOST: str = "0.0.0.0"
     PORT: int = 8000

@@ -1,4 +1,4 @@
-"""Domain enumerations and constrained values for QueueLess Bharat."""
+"""Domain enumerations and constrained values for QueuelessBharat."""
 
 from enum import StrEnum
 

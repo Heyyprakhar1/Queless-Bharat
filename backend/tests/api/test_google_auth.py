@@ -456,12 +456,13 @@ class TestGoogleCitizenAuthentication:
 
         async def worker_a():
             await worker_b_checked_identity.wait()
-            async with async_session_factory() as session_a:
-                svc_a = AuthService(session_a)
-                with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
-                    res = await svc_a.authenticate_google_user("dummy.token.a")
-            worker_a_committed.set()
-            return res
+            try:
+                async with async_session_factory() as session_a:
+                    svc_a = AuthService(session_a)
+                    with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
+                        return await svc_a.authenticate_google_user("dummy.token.a")
+            finally:
+                worker_a_committed.set()
 
         async def worker_b():
             async with async_session_factory() as session_b:
@@ -474,7 +475,7 @@ class TestGoogleCitizenAuthentication:
                     query_count += 1
                     if query_count == 1:
                         worker_b_checked_identity.set()
-                        await worker_a_committed.wait()
+                        await asyncio.wait_for(worker_a_committed.wait(), timeout=10.0)
                     return result
 
                 session_b.execute = intercepted_execute
@@ -482,7 +483,7 @@ class TestGoogleCitizenAuthentication:
                 with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
                     return await svc_b.authenticate_google_user("dummy.token.b")
 
-        res_a, res_b = await asyncio.gather(worker_a(), worker_b())
+        res_a, res_b = await asyncio.wait_for(asyncio.gather(worker_a(), worker_b()), timeout=15.0)
 
         user_a, token_a = res_a
         user_b, token_b = res_b
@@ -532,12 +533,16 @@ class TestGoogleCitizenAuthentication:
 
         async def worker_a():
             await worker_b_checked_identity.wait()
-            async with async_session_factory() as session_a:
-                svc_a = AuthService(session_a)
-                with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_a):
-                    res = await svc_a.authenticate_google_user("dummy.token.a")
-            worker_a_committed.set()
-            return res
+            try:
+                async with async_session_factory() as session_a:
+                    svc_a = AuthService(session_a)
+                    with patch(
+                        "google.oauth2.id_token.verify_oauth2_token",
+                        return_value=payload_a,
+                    ):
+                        return await svc_a.authenticate_google_user("dummy.token.a")
+            finally:
+                worker_a_committed.set()
 
         async def worker_b():
             async with async_session_factory() as session_b:
@@ -550,7 +555,7 @@ class TestGoogleCitizenAuthentication:
                     query_count += 1
                     if query_count == 1:
                         worker_b_checked_identity.set()
-                        await worker_a_committed.wait()
+                        await asyncio.wait_for(worker_a_committed.wait(), timeout=10.0)
                     return result
 
                 session_b.execute = intercepted_execute
@@ -558,7 +563,9 @@ class TestGoogleCitizenAuthentication:
                 with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_b):
                     return await svc_b.authenticate_google_user("dummy.token.b")
 
-        results = await asyncio.gather(worker_a(), worker_b(), return_exceptions=True)
+        results = await asyncio.wait_for(
+            asyncio.gather(worker_a(), worker_b(), return_exceptions=True), timeout=15.0
+        )
 
         user_a, token_a = results[0]
         exc_b = results[1]

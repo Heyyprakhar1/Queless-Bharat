@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const BACKEND_URL = 'http://localhost:8001'
 
-test.describe('QueueLess Bharat — M6.1 India Demo Coverage E2E Suite', () => {
+test.describe('QueuelessBharat — M6.1 India Demo Coverage E2E Suite', () => {
   test.beforeAll(async ({ request }) => {
     // Authenticate as Admin to verify backend connectivity
     const loginResp = await request.post(`${BACKEND_URL}/api/v1/auth/login`, {

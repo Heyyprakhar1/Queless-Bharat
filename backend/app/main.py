@@ -1,4 +1,4 @@
-"""QueueLess Bharat backend application entrypoint."""
+"""QueuelessBharat backend application entrypoint."""
 
 import json
 from collections.abc import AsyncGenerator
