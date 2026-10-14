@@ -664,7 +664,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen civic-tricolour-mesh relative overflow-x-hidden text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-150 py-4 px-3 sm:px-6 lg:px-8 space-y-6">
+    <div className="min-h-screen civic-tricolour-mesh relative overflow-x-hidden text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-150 py-4 px-3 sm:px-6 lg:px-8 space-y-6">
       {/* Subtle Ambient Indian Tricolour Flow & Chakra Watermark */}
       <div className="absolute top-0 left-0 right-0 pointer-events-none select-none z-0 overflow-hidden">
         <TricolourWatermarkFlow className="w-full h-44 opacity-80" />
@@ -982,7 +982,7 @@ function AppContent() {
       />
 
       {/* Footer */}
-      <div className="relative z-10">
+      <div className="relative z-10 mt-auto">
         <Footer />
       </div>
     </div>

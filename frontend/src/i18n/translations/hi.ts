@@ -300,7 +300,7 @@ export const hi: TranslationDictionary = {
     telemetryFreshness: 'डेटा ताज़गी: {seconds} सेकंड पहले',
     assumptionsHeading: 'परिचालन धारणाएँ',
     disclaimerHeading: 'ईमानदार सलाह और अस्वीकरण',
-    staleDataNotice: 'कतार डेटा पुराना या अपर्याप्त है। ताज़ा अवलोकन के बिना विश्वसनीय आगमन समय की सिफारिश नहीं की जा सकती।',
+    staleDataNotice: 'वर्तमान अनुमान अनुपलब्ध है — नवीनतम कतार डेटा पुराना है। कृपया सुविधा से पुष्टि करें।',
     checklistHeading: 'दस्तावेज़ तत्परता चेकलिस्ट',
     verifiedSourceLabel: 'आधिकारिक सत्यापित स्रोत',
     verificationDateLabel: 'सत्यापन तिथि: {date}',

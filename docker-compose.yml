@@ -21,7 +21,7 @@ services:
       - queless-net
 
   backend:
-    image: heyyprakhar1/queueless-backend
+    image: heyyprakhar1/queuelessbharat-backend:latest
     container_name: queless-backend
     restart: unless-stopped
     depends_on:
@@ -55,7 +55,7 @@ services:
       - queless-net
 
   frontend:
-    image: heyyprakhar1/queuless-frontend:latest
+    image: heyyprakhar1/queuelessbharat-frontend:latest
     container_name: queless-frontend
     restart: unless-stopped
     depends_on:

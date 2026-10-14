@@ -119,6 +119,16 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
     }
   }
 
+  const isTelemetryStale = Boolean(
+    (plan?.arrival_window.data_freshness_seconds !== null &&
+      plan?.arrival_window.data_freshness_seconds !== undefined &&
+      plan?.arrival_window.data_freshness_seconds > 1800) ||
+      (plan?.arrival_window.reason?.toLowerCase().includes('stale') ?? false)
+  )
+  const isArrivalWindowRecommended = Boolean(
+    plan?.arrival_window.is_recommended && !isTelemetryStale
+  )
+
   return (
     <Card
       id="smart-visit-planner-section"
@@ -245,7 +255,7 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                     {t('planner.arrivalWindowHeading')}
                   </h4>
                 </div>
-                {plan.arrival_window.confidence && (
+                {isArrivalWindowRecommended && plan.arrival_window.confidence && (
                   <Badge
                     variant={
                       plan.arrival_window.confidence === 'HIGH'
@@ -261,7 +271,7 @@ export const SmartVisitPlanner: React.FC<SmartVisitPlannerProps> = ({
                 )}
               </div>
 
-              {plan.arrival_window.is_recommended ? (
+              {isArrivalWindowRecommended ? (
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
                     <div>

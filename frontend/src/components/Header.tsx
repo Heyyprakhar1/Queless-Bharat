@@ -310,7 +310,7 @@ export const Header: React.FC<HeaderProps> = ({
                 id="btn-open-citizen-access"
                 type="button"
                 onClick={onOpenCitizenAccess}
-                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium text-xs rounded-xl transition border border-slate-200 dark:border-slate-700 cursor-pointer select-none"
+                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-medium text-xs rounded-xl transition shadow-xs cursor-pointer select-none"
               >
                 {t('header.citizenAccess')}
               </button>
@@ -318,7 +318,7 @@ export const Header: React.FC<HeaderProps> = ({
                 id="btn-open-auth"
                 type="button"
                 onClick={onOpenStaffPortal}
-                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-medium text-xs rounded-xl transition shadow-xs cursor-pointer flex items-center space-x-1 select-none"
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs rounded-xl transition border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center space-x-1 select-none"
               >
                 <span>{t('header.staffPortal')}</span>
               </button>
