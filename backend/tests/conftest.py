@@ -9,16 +9,46 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, get_password_hash
+from app.core.test_safety import assert_safe_test_database
 from app.db.session import async_session_factory, engine
 from app.domain.enums import UserRole
 from app.domain.models import User
 from app.main import app
 
+DATABASE_FIXTURES: frozenset[str] = frozenset({
+    "db_session",
+    "client",
+    "unauth_client",
+    "make_user",
+    "admin_auth",
+    "operator_auth",
+    "citizen_auth",
+})
+
 
 @pytest.fixture(autouse=True)
-async def clean_database() -> AsyncGenerator[None, None]:
-    """Ensures completely isolated, clean PostgreSQL state for every test."""
+async def clean_database(request: pytest.FixtureRequest) -> AsyncGenerator[None, None]:
+    """Ensures completely isolated, clean PostgreSQL state for database-backed tests.
+
+    Safety Guard:
+    Strictly verifies that TESTING=true is set, the configured database is an approved
+    disposable test database, and the live connection matches the test database before
+    issuing any TRUNCATE statement. Non-database unit tests bypass this fixture.
+    """
+    test_path = str(getattr(request, "path", ""))
+    is_db_test = (
+        any(f in request.fixturenames for f in DATABASE_FIXTURES)
+        or bool(request.node.get_closest_marker("database"))
+        or "/tests/api/" in test_path
+        or "/tests/integration/" in test_path
+    )
+    if not is_db_test:
+        yield
+        return
+
     async with async_session_factory() as session:
+        # Fail closed: must verify connection is an approved test database before TRUNCATE
+        await assert_safe_test_database(session)
         await session.execute(
             text(
                 "TRUNCATE TABLE users, user_identities, locations, services, "
@@ -35,6 +65,7 @@ async def clean_database() -> AsyncGenerator[None, None]:
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Yields a managed database session for direct repository/service testing."""
     async with async_session_factory() as session:
+        await assert_safe_test_database(session)
         yield session
 
 
@@ -51,6 +82,7 @@ async def make_user():
         password: str = "testpassword123",
     ) -> tuple[User, str, dict[str, str]]:
         async with async_session_factory() as session:
+            await assert_safe_test_database(session)
             user = User(
                 email=email.lower(),
                 full_name=full_name,

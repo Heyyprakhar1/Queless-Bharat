@@ -11,16 +11,28 @@ from app.core.logging import get_logger
 settings = get_settings()
 logger = get_logger("db")
 
-engine = create_async_engine(
-    settings.async_database_url,
-    echo=False,
-    future=True,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=10.0,
-    pool_recycle=1800,
-)
+import os
+from sqlalchemy.pool import NullPool
+
+is_testing = os.environ.get("TESTING", "").strip().lower() in ("true", "1", "yes")
+
+engine_kwargs: dict = {
+    "echo": False,
+    "future": True,
+}
+
+if is_testing:
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs.update({
+        "pool_pre_ping": True,
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_timeout": 10.0,
+        "pool_recycle": 1800,
+    })
+
+engine = create_async_engine(settings.async_database_url, **engine_kwargs)
 
 async_session_factory = async_sessionmaker(
     bind=engine,
