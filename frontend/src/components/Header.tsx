@@ -6,7 +6,6 @@ import type { User } from '../types/auth'
 import { IndianFlag } from './ui'
 
 interface HeaderProps {
-  isHealthy: boolean
   currentUser: User | null
   currentWorkspace: 'citizen' | 'staff'
   onSelectWorkspace: (ws: 'citizen' | 'staff') => void
@@ -16,7 +15,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  isHealthy,
   currentUser,
   currentWorkspace,
   onSelectWorkspace,
@@ -29,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
-  const isStaff = currentUser?.role === 'OPERATOR' || currentUser?.role === 'ADMIN'
+  const isAdmin = currentUser?.role === 'ADMIN'
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -71,32 +69,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
                   {t('header.appTitle')}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  {t('header.urbanMarkets')}
-                </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
                 {t('header.tagline')}
               </p>
             </div>
           </div>
-
-          {/* Health indicator on mobile */}
-          <div
-            className="flex sm:hidden items-center"
-            title={isHealthy ? t('common.systemOnline') : t('common.systemOffline')}
-            aria-label={isHealthy ? t('common.systemOnline') : t('common.systemOffline')}
-          >
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isHealthy ? 'bg-emerald-500' : 'bg-rose-500'
-              }`}
-            />
-          </div>
         </div>
 
-        {/* Center / Navigation Switcher (for Staff role) */}
-        {isStaff && (
+        {/* Center / Navigation Switcher (strictly for Admin role) */}
+        {isAdmin && (
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <button
               id="tab-view-citizen"
@@ -120,27 +102,13 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              {currentUser?.role === 'ADMIN'
-                ? t('header.adminWorkspace')
-                : t('header.operatorDesk')}
+              {t('header.adminWorkspace')}
             </button>
           </div>
         )}
 
         {/* Right Section: Indian Flag, Language, Theme, and FAR RIGHT Profile Area */}
         <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end">
-          {/* Health status pill on desktop */}
-          <div className="hidden sm:flex items-center space-x-1.5 text-xs text-slate-500 dark:text-slate-400 mr-0.5">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isHealthy ? 'bg-emerald-500' : 'bg-rose-500'
-              }`}
-            />
-            <span className="font-medium">
-              {isHealthy ? t('common.systemOnline') : t('common.systemOffline')}
-            </span>
-          </div>
-
           {/* Indian Tricolour Flag SVG */}
           <div className="hidden sm:flex items-center" title="Bharat / India">
             <IndianFlag className="w-5 h-3.5 rounded-xs border border-slate-200 dark:border-slate-700 shadow-2xs" />
@@ -301,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </p>
                   </div>
 
-                  {isStaff && (
+                  {isAdmin && (
                     <div className="py-1 border-b border-slate-100 dark:border-slate-700/80">
                       <button
                         type="button"
@@ -314,7 +282,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className="w-full text-left px-3.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium cursor-pointer"
                       >
                         {currentWorkspace === 'citizen'
-                          ? t('header.staffPortal')
+                          ? t('header.adminWorkspace')
                           : t('header.citizenPortal')}
                       </button>
                     </div>

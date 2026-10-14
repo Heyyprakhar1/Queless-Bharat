@@ -139,9 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const el = document.getElementById('facility-spatial-card')
       el?.scrollIntoView({ behavior: 'smooth' })
     } else if (id === 'citizenGuide') {
-      const el =
-        document.getElementById('smart-visit-planner-section') ||
-        document.getElementById('citizen-explainer-section')
+      const el = document.getElementById('smart-visit-planner-section')
       el?.scrollIntoView({ behavior: 'smooth' })
     }
   }

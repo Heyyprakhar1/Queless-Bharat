@@ -169,7 +169,7 @@ export const OperatorDesk: React.FC<OperatorDeskProps> = ({
       </div>
 
       {/* 3. Waiting Queue Section */}
-      {deskData && (
+      {(deskData || waitingSessions.length > 0) && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             <span>Waiting in Queue ({waitingSessions.length})</span>

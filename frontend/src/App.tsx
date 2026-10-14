@@ -12,7 +12,6 @@ import {
   register,
 } from './api/auth'
 import { ApiError } from './api/client'
-import { fetchHealth } from './api/health'
 import {
   cancelQueueSession,
   checkInQueue,
@@ -32,7 +31,6 @@ import {
   CitizenTokenDesk,
   Footer,
   Header,
-  HealthPanel,
   IndiaDemoExplorer,
   IndianFlag,
   OperatorDesk,
@@ -44,7 +42,6 @@ import type { SidebarTab } from './components/Sidebar'
 import { ThemeProvider } from './context/ThemeContext'
 import { LanguageProvider, useLanguage } from './i18n'
 import type { User } from './types/auth'
-import type { HealthResponse } from './types/health'
 import type {
   Location,
   OperatorDeskResponse,
@@ -55,10 +52,7 @@ import type {
 
 function AppContent() {
   const { t } = useLanguage()
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [healthLoading, setHealthLoading] = useState<boolean>(true)
-  const [healthError, setHealthError] = useState<string | null>(null)
-  const [lastChecked, setLastChecked] = useState<Date | null>(null)
+  const [routeAccessNotice, setRouteAccessNotice] = useState<string | null>(null)
 
   // Auth & Identity State
   const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredUser())
@@ -116,8 +110,10 @@ function AppContent() {
           setCurrentUser(user)
           if (user.full_name && !citizenName) setCitizenName(user.full_name)
           if (user.email && !citizenEmail) setCitizenEmail(user.email)
-          if (user.role === 'OPERATOR' || user.role === 'ADMIN') {
+          if (user.role === 'ADMIN') {
             setCurrentWorkspace('staff')
+          } else {
+            setCurrentWorkspace('citizen')
           }
         })
         .catch(() => {
@@ -128,6 +124,51 @@ function AppContent() {
     }
   }, [])
 
+  // Direct URL route checking (e.g. #admin, /admin, #operator, /operator)
+  useEffect(() => {
+    const handleUrlRoute = () => {
+      if (typeof window === 'undefined') return
+      const hash = window.location.hash.toLowerCase()
+      const path = window.location.pathname.toLowerCase()
+      const search = window.location.search.toLowerCase()
+
+      const isAdminTarget =
+        hash === '#admin' ||
+        path === '/admin' ||
+        search.includes('workspace=admin') ||
+        search.includes('workspace=staff')
+      const isOperatorTarget =
+        hash === '#operator' ||
+        path === '/operator' ||
+        search.includes('workspace=operator')
+
+      if (isAdminTarget) {
+        if (currentUser?.role === 'ADMIN') {
+          setCurrentWorkspace('staff')
+          setRouteAccessNotice(null)
+        } else {
+          setCurrentWorkspace('citizen')
+          setRouteAccessNotice(
+            currentUser
+              ? 'Administrator credentials required to access the Admin Workspace.'
+              : 'Please sign in with an Administrator account to access the Admin Workspace.'
+          )
+        }
+      } else if (isOperatorTarget) {
+        setCurrentWorkspace('citizen')
+        setRouteAccessNotice('Operator Workspace is not active in this release.')
+      }
+    }
+
+    handleUrlRoute()
+    window.addEventListener('hashchange', handleUrlRoute)
+    window.addEventListener('popstate', handleUrlRoute)
+    return () => {
+      window.removeEventListener('hashchange', handleUrlRoute)
+      window.removeEventListener('popstate', handleUrlRoute)
+    }
+  }, [currentUser])
+
   // Sync citizen inputs when currentUser changes
   useEffect(() => {
     if (currentUser) {
@@ -135,21 +176,6 @@ function AppContent() {
       if (currentUser.email) setCitizenEmail(currentUser.email)
     }
   }, [currentUser])
-
-  const checkHealth = async () => {
-    setHealthLoading(true)
-    setHealthError(null)
-    try {
-      const data = await fetchHealth()
-      setHealth(data)
-      setLastChecked(new Date())
-    } catch (err) {
-      setHealthError(err instanceof Error ? err.message : 'Unable to connect to backend')
-      setHealth(null)
-    } finally {
-      setHealthLoading(false)
-    }
-  }
 
   // Load all services for backward-compatible citizen dropdown
   const loadGlobalCatalog = async () => {
@@ -180,7 +206,6 @@ function AppContent() {
       }
     }
     initCities()
-    checkHealth()
     loadGlobalCatalog()
     fetchGoogleAuthConfig()
       .then((cfg) => {
@@ -193,8 +218,6 @@ function AppContent() {
       .catch(() => {
         setGoogleClientId(null)
       })
-    const interval = setInterval(checkHealth, 30000)
-    return () => clearInterval(interval)
   }, [])
 
   // Load facilities for city
@@ -418,7 +441,7 @@ function AppContent() {
       setCurrentUser(resp.user)
       setShowAuthModal(false)
       setAuthPassword('')
-      if (resp.user.role === 'OPERATOR' || resp.user.role === 'ADMIN') {
+      if (resp.user.role === 'ADMIN') {
         setCurrentWorkspace('staff')
       }
     } catch (err) {
@@ -473,6 +496,7 @@ function AppContent() {
     await logout()
     setCurrentUser(null)
     setCurrentWorkspace('citizen')
+    setRouteAccessNotice(null)
     setDeskData(null)
     setCitizenError(null)
     setOperatorMessage(null)
@@ -639,8 +663,6 @@ function AppContent() {
     }
   }
 
-  const isHealthy = health?.status === 'ok' && health?.database === 'connected'
-
   return (
     <div className="min-h-screen civic-tricolour-mesh relative overflow-x-hidden text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-150 py-4 px-3 sm:px-6 lg:px-8 space-y-6">
       {/* Subtle Ambient Indian Tricolour Flow & Chakra Watermark */}
@@ -653,7 +675,7 @@ function AppContent() {
 
       {/* 1. TOP GLOBAL BRAND HERO HEADER */}
       <header className="max-w-[1440px] mx-auto w-full space-y-3 relative z-10">
-        {/* Brand Bar: Wordmark, Indian Flag, Tagline & 4 Value Propositions */}
+        {/* Brand Bar: Wordmark, Indian Flag, Tagline */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-1">
           <div>
             <div className="flex items-center space-x-3">
@@ -665,26 +687,6 @@ function AppContent() {
             <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
               {t('brand.tagline')}
             </p>
-          </div>
-
-          {/* 4 Compact Value Propositions on desktop */}
-          <div className="hidden lg:flex items-center space-x-2.5 text-xs">
-            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span className="font-semibold">{t('brand.valuePropKnowBefore')}</span>
-            </div>
-            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span className="font-semibold">{t('brand.valuePropPlannedVisits')}</span>
-            </div>
-            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span className="font-semibold">{t('brand.valuePropBetterCitizen')}</span>
-            </div>
-            <div className="flex items-center space-x-1.5 bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-slate-700 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span className="font-semibold">{t('brand.valuePropAcrossIndia')}</span>
-            </div>
           </div>
         </div>
 
@@ -716,7 +718,6 @@ function AppContent() {
         <div className="civic-tricolour-hairline" />
         {/* Application Header inside container frame */}
         <Header
-          isHealthy={isHealthy}
           currentUser={currentUser}
           currentWorkspace={currentWorkspace}
           onSelectWorkspace={setCurrentWorkspace}
@@ -733,62 +734,41 @@ function AppContent() {
           }}
         />
 
+        {/* Route Access Notice Alert */}
+        {routeAccessNotice && (
+          <div
+            id="route-access-notice"
+            role="alert"
+            className="m-4 sm:m-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-center justify-between gap-3 shadow-xs"
+          >
+            <div className="flex items-center space-x-2">
+              <span className="font-bold shrink-0">Access Restricted:</span>
+              <span>{routeAccessNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRouteAccessNotice(null)}
+              className="text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 font-bold px-2 py-1 rounded cursor-pointer"
+              aria-label="Dismiss notice"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Body */}
-        {currentWorkspace === 'staff' ? (
+        {currentWorkspace === 'staff' && currentUser?.role === 'ADMIN' ? (
           <main className="p-4 sm:p-6 lg:p-8 space-y-6">
-            {currentUser?.role === 'ADMIN' ? (
-              <AdminWorkspace
-                currentUser={currentUser}
-                cities={cities}
-                facilities={facilities}
-                selectedCity={selectedCity}
-                onSelectCity={setSelectedCity}
-                onRefreshData={() => {
-                  checkHealth()
-                  loadGlobalCatalog()
-                }}
-              />
-            ) : (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
-                        {t('operator.workspaceHeading')}
-                      </h2>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                        {t('operator.operatorActive')}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                      {t('operator.workspaceDesc')}
-                    </p>
-                  </div>
-
-                  <div className="text-xs text-slate-600 dark:text-slate-300">
-                    {t('operator.staffAccount')} <strong>{currentUser?.full_name || currentUser?.email}</strong>
-                  </div>
-                </div>
-
-                <OperatorDesk
-                  currentUser={currentUser}
-                  deskData={deskData}
-                  userStatus={userStatus}
-                  services={services}
-                  selectedServiceId={selectedServiceId}
-                  onSelectService={(svcId) => {
-                    setSelectedServiceId(svcId)
-                    loadOperatorDesk(svcId)
-                  }}
-                  citizenLoading={citizenLoading}
-                  operatorMessage={operatorMessage}
-                  operatorIsError={operatorIsError}
-                  onStartService={handleOperatorStart}
-                  onCompleteService={handleOperatorComplete}
-                  onRefreshStatus={() => loadOperatorDesk()}
-                />
-              </div>
-            )}
+            <AdminWorkspace
+              currentUser={currentUser}
+              cities={cities}
+              facilities={facilities}
+              selectedCity={selectedCity}
+              onSelectCity={setSelectedCity}
+              onRefreshData={() => {
+                loadGlobalCatalog()
+              }}
+            />
           </main>
         ) : (
           /* 3-Column Citizen Experience on desktop */
@@ -802,56 +782,124 @@ function AppContent() {
 
             {/* Column 2: Center Main Citizen Workspace */}
             <div className="flex-1 min-w-0 border-t lg:border-t-0 lg:border-r border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 lg:p-7 space-y-6">
-              <IndiaDemoExplorer
-                cities={cities}
-                selectedCity={selectedCity}
-                onSelectCity={handleSelectCity}
-                facilities={facilities}
-                selectedFacilityId={selectedFacilityId}
-                onSelectFacility={handleSelectFacility}
-                facilityServices={facilityServices}
-                selectedDemoServiceId={selectedDemoServiceId}
-                onSelectDemoService={handleSelectDemoService}
-                demoQueueStatus={demoQueueStatus}
-                demoQueueLoading={demoQueueLoading}
-                demoQueueError={demoQueueError}
-                facilitiesLoading={facilitiesLoading}
-                facilitiesError={facilitiesError}
-                onRetryFacilities={() => {
-                  if (selectedCity) loadFacilitiesForCity(selectedCity)
-                }}
-                onTestServiceInTokenDesk={(serviceId) => {
-                  setSelectedServiceId(serviceId)
-                  setActiveNav('myTokens')
-                  const deskEl = document.getElementById('citizen-token-desk-section')
-                  if (deskEl) {
-                    deskEl.scrollIntoView({ behavior: 'smooth' })
-                  }
-                }}
-                onCheckQueue={() => {
-                  if (selectedDemoServiceId) {
-                    loadDemoQueueStatus(selectedDemoServiceId)
-                    const waitEl = document.getElementById('demo-wait-projection')
-                    if (waitEl) {
-                      waitEl.scrollIntoView({ behavior: 'smooth' })
-                    }
-                  }
-                }}
-              />
+              {activeNav === 'myTokens' ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                        {t('tokenDesk.title')}
+                      </h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('tokenDesk.civicSelfService')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveNav('findServices')}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 cursor-pointer"
+                    >
+                      &larr; Back to Services
+                    </button>
+                  </div>
+                  <CitizenTokenDesk
+                    compact={false}
+                    currentUser={currentUser}
+                    onOpenSignIn={() => {
+                      setAuthTab('citizen')
+                      setShowAuthModal(true)
+                      setAuthError(null)
+                    }}
+                    services={services}
+                    selectedServiceId={selectedServiceId}
+                    onSelectService={setSelectedServiceId}
+                    citizenName={citizenName}
+                    onChangeCitizenName={setCitizenName}
+                    citizenEmail={citizenEmail}
+                    onChangeCitizenEmail={setCitizenEmail}
+                    activeSessionId={activeSessionId}
+                    userStatus={userStatus}
+                    citizenLoading={citizenLoading}
+                    citizenError={citizenError}
+                    sessionNotice={sessionNotice}
+                    onClearSessionNotice={() => setSessionNotice(null)}
+                    selectedDemoServiceId={selectedDemoServiceId}
+                    onJoinQueue={handleJoinQueue}
+                    onCancelTicket={handleCancelTicket}
+                    onDismissTicket={handleDismissTicket}
+                    onRefreshTicket={() => loadUserStatus(activeSessionId)}
+                  >
+                    {activeSessionId && userStatus && (currentUser?.role === 'ADMIN' || currentUser?.role === 'OPERATOR') && (
+                      <OperatorDesk
+                        currentUser={currentUser}
+                        deskData={deskData}
+                        userStatus={userStatus}
+                        citizenLoading={citizenLoading}
+                        operatorMessage={operatorMessage}
+                        operatorIsError={operatorIsError}
+                        onStartService={handleOperatorStart}
+                        onCompleteService={handleOperatorComplete}
+                        onRefreshStatus={() => {
+                          loadUserStatus(activeSessionId)
+                          loadOperatorDesk()
+                        }}
+                      />
+                    )}
+                  </CitizenTokenDesk>
+                </div>
+              ) : (
+                <>
+                  <IndiaDemoExplorer
+                    cities={cities}
+                    selectedCity={selectedCity}
+                    onSelectCity={handleSelectCity}
+                    facilities={facilities}
+                    selectedFacilityId={selectedFacilityId}
+                    onSelectFacility={handleSelectFacility}
+                    facilityServices={facilityServices}
+                    selectedDemoServiceId={selectedDemoServiceId}
+                    onSelectDemoService={handleSelectDemoService}
+                    demoQueueStatus={demoQueueStatus}
+                    demoQueueLoading={demoQueueLoading}
+                    demoQueueError={demoQueueError}
+                    facilitiesLoading={facilitiesLoading}
+                    facilitiesError={facilitiesError}
+                    onRetryFacilities={() => {
+                      if (selectedCity) loadFacilitiesForCity(selectedCity)
+                    }}
+                    onTestServiceInTokenDesk={(serviceId) => {
+                      setSelectedServiceId(serviceId)
+                      setActiveNav('myTokens')
+                      const deskEl = document.getElementById('citizen-token-desk-section')
+                      if (deskEl) {
+                        deskEl.scrollIntoView({ behavior: 'smooth' })
+                      }
+                    }}
+                    onCheckQueue={() => {
+                      if (selectedDemoServiceId) {
+                        loadDemoQueueStatus(selectedDemoServiceId)
+                        const waitEl = document.getElementById('demo-wait-projection')
+                        if (waitEl) {
+                          waitEl.scrollIntoView({ behavior: 'smooth' })
+                        }
+                      }
+                    }}
+                  />
 
-              {/* M6.3 Smart Visit Planner (Arrival Window & Document Readiness Checklist) */}
-              <SmartVisitPlanner
-                serviceId={selectedDemoServiceId || selectedServiceId || null}
-                serviceName={
-                  facilityServices.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
-                  services.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
-                  null
-                }
-                facilityName={
-                  facilities.find((f) => f.id === selectedFacilityId)?.name || null
-                }
-                cityName={selectedCity || null}
-              />
+                  {/* M6.3 Smart Visit Planner (Arrival Window & Document Readiness Checklist) */}
+                  <SmartVisitPlanner
+                    serviceId={selectedDemoServiceId || selectedServiceId || null}
+                    serviceName={
+                      facilityServices.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                      services.find((s) => s.id === (selectedDemoServiceId || selectedServiceId))?.name ||
+                      null
+                    }
+                    facilityName={
+                      facilities.find((f) => f.id === selectedFacilityId)?.name || null
+                    }
+                    cityName={selectedCity || null}
+                  />
+                </>
+              )}
             </div>
 
             {/* Column 3: Right Persistent Token Panel ("My Queue Token") */}
@@ -860,6 +908,8 @@ function AppContent() {
               className="w-full lg:w-80 xl:w-96 shrink-0 border-t lg:border-t-0 border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 lg:p-6 bg-slate-50/40 dark:bg-slate-900/40"
             >
               <CitizenTokenDesk
+                compact={true}
+                onViewFullDesk={() => setActiveNav('myTokens')}
                 currentUser={currentUser}
                 onOpenSignIn={() => {
                   setAuthTab('citizen')
@@ -885,33 +935,26 @@ function AppContent() {
                 onDismissTicket={handleDismissTicket}
                 onRefreshTicket={() => loadUserStatus(activeSessionId)}
               >
-                {activeSessionId && userStatus && (
+                {activeSessionId && userStatus && (currentUser?.role === 'ADMIN' || currentUser?.role === 'OPERATOR') && (
                   <OperatorDesk
                     currentUser={currentUser}
+                    deskData={deskData}
                     userStatus={userStatus}
                     citizenLoading={citizenLoading}
                     operatorMessage={operatorMessage}
                     operatorIsError={operatorIsError}
                     onStartService={handleOperatorStart}
                     onCompleteService={handleOperatorComplete}
-                    onRefreshStatus={() => loadUserStatus(activeSessionId)}
+                    onRefreshStatus={() => {
+                      loadUserStatus(activeSessionId)
+                      loadOperatorDesk()
+                    }}
                   />
                 )}
               </CitizenTokenDesk>
             </div>
           </main>
         )}
-      </div>
-
-      {/* 3. SYSTEM HEALTH PANEL */}
-      <div className="max-w-[1440px] mx-auto w-full relative z-10">
-        <HealthPanel
-          health={health}
-          healthLoading={healthLoading}
-          healthError={healthError}
-          lastChecked={lastChecked}
-          onCheckHealth={checkHealth}
-        />
       </div>
 
       {/* AUTH MODAL */}

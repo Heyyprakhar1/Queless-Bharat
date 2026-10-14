@@ -55,7 +55,7 @@ async function setupIsolatedServiceWithOperator(request: any, name: string) {
     headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       location_id: locationId,
-      name: `${name} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: `000-${name} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       description: 'Operator desk visibility isolated test track',
     },
   })
@@ -135,10 +135,10 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
     await expect(page.getByText('WAITING IN LINE', { exact: true })).toBeVisible()
     await expect(page.locator(`text=${citizenSessionId}`)).toBeVisible()
 
-    // 2. Role-Based Controls: Staff controls are disabled for Citizen
-    await expect(page.locator('#operator-role-indicator')).toContainText('Staff Restricted')
-    await expect(page.locator('#btn-operator-start')).toBeDisabled()
-    await expect(page.locator('#btn-operator-complete')).toBeDisabled()
+    // 2. Role-Based Controls: Staff controls are not exposed to ordinary Citizen accounts
+    await expect(page.locator('#operator-role-indicator')).not.toBeVisible()
+    await expect(page.locator('#btn-operator-start')).not.toBeVisible()
+    await expect(page.locator('#btn-operator-complete')).not.toBeVisible()
 
     // Direct API attempt by citizen returns 403 Forbidden (backend RBAC intact)
     const citizenToken = await page.evaluate(() => localStorage.getItem('queless_access_token'))
@@ -171,8 +171,8 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
     await expect(page.locator('#auth-user-badge')).toContainText('Desk Operator Rajesh')
     await expect(page.locator('#auth-role-badge')).toHaveText('OPERATOR')
 
-    // Operator Desk workspace displays assigned service
-    await expect(page.getByText('Admissions & Merit List Verification', { exact: false })).toBeVisible()
+    // Operator Desk displays assigned service
+    await expect(page.getByRole('strong')).toContainText('Admissions & Merit List Verification')
 
     // Verify waiting tokens are visible in Operator Desk list (includes the newly issued citizen token)
     const waitingQueueList = page.locator('#operator-waiting-queue-list')
@@ -257,7 +257,7 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
 
     // Active session is now displayed at desk with citizenSessionId
     await expect(page.locator('text=COUNTER ACTIVE: IN SERVICE')).toBeVisible()
-    await expect(page.locator(`text=${citizenSessionId}`)).toBeVisible()
+    await expect(page.locator(`text=${citizenSessionId}`).first()).toBeVisible()
 
     // Verify DB reflects IN_SERVICE
     const inServiceDb = await (
