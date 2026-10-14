@@ -11,7 +11,7 @@ In public service environments (such as hospital emergency departments, RTO lice
 Furthermore, real queues have inherent variance: service times fluctuate, complex cases occur, and counters pause for meal breaks. Providing point-in-time predictions with artificial precision (e.g., "Wait time: 42 minutes") creates a false sense of certainty that is almost always incorrect.
 
 ## Decision
-Numerical wait-time estimates in QueueLess Bharat must be computed exclusively by **deterministic, data-driven application logic** residing in the Queue Engine.
+Numerical wait-time estimates in QueuelessBharat must be computed exclusively by **deterministic, data-driven application logic** residing in the Queue Engine.
 
 The Queue Engine is the sole numerical source of truth. The mathematical estimation model incorporates explicit signals:
 1. **People Ahead in Queue ($N$):** Count of pending tickets or aggregated crowd estimates.

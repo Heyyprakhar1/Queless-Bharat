@@ -1,13 +1,13 @@
 # Security Architecture
 
 > **Status:** Architecture Design / Pre-Implementation Baseline
-> **Scope:** QueueLess Bharat Infrastructure, Application, and Data Security
+> **Scope:** QueuelessBharat Infrastructure, Application, and Data Security
 
 ---
 
 ## 1. Security Design Overview
 
-QueueLess Bharat adopts a defense-in-depth security model spanning physical infrastructure, network perimeters, application logic, and operational access. The architecture enforces zero-trust principles across internal boundaries and ensures user privacy through data minimization.
+QueuelessBharat adopts a defense-in-depth security model spanning physical infrastructure, network perimeters, application logic, and operational access. The architecture enforces zero-trust principles across internal boundaries and ensures user privacy through data minimization.
 
 ---
 

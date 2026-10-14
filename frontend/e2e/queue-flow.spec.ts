@@ -79,7 +79,7 @@ async function loginAsAdmin(page: any) {
   }
 }
 
-test.describe('QueueLess Bharat — Real Browser E2E Suite', () => {
+test.describe('QueuelessBharat — Real Browser E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage before each test for clean slate
     await page.goto('/')

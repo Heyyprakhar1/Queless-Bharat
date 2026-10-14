@@ -7,7 +7,7 @@
 
 ## 1. Data Design Principles
 
-QueueLess Bharat's data architecture is built around relational integrity, historical durability, transparency, and data minimization:
+QueuelessBharat's data architecture is built around relational integrity, historical durability, transparency, and data minimization:
 
 1. **Queue Events as Durable Historical Facts:**
    Raw events representing physical transitions (counter opened, ticket issued, citizen entered service, ticket completed) are treated as immutable, append-only records. Historical events are never updated or deleted during standard operations.

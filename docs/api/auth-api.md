@@ -1,6 +1,6 @@
 # Authentication & Identity API Reference
 
-QueueLess Bharat provides a secure, stateless authentication and identity boundary supporting Role-Based Access Control (RBAC) across three distinct roles: `CITIZEN`, `OPERATOR`, and `ADMIN`.
+QueuelessBharat provides a secure, stateless authentication and identity boundary supporting Role-Based Access Control (RBAC) across three distinct roles: `CITIZEN`, `OPERATOR`, and `ADMIN`.
 
 All endpoints are served under `/api/v1/auth`.
 

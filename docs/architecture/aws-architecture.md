@@ -7,7 +7,7 @@
 
 ## 1. High-Level Production Topology
 
-The target production infrastructure topology for QueueLess Bharat follows a multi-tier, security-isolated architecture orchestrated across multiple Availability Zones (AZs):
+The target production infrastructure topology for QueuelessBharat follows a multi-tier, security-isolated architecture orchestrated across multiple Availability Zones (AZs):
 
 ```
                    [ Internet ]

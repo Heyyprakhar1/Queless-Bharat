@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-In Milestones 1 through 3, QueueLess Bharat established its core queue domain, deterministic wait-time estimator, state machine, and browser-verified citizen queue workflow. However, all endpoints operated in an unauthenticated or pseudo-authenticated state where client-provided identifiers were trusted without verification.
+In Milestones 1 through 3, QueuelessBharat established its core queue domain, deterministic wait-time estimator, state machine, and browser-verified citizen queue workflow. However, all endpoints operated in an unauthenticated or pseudo-authenticated state where client-provided identifiers were trusted without verification.
 
 To operate securely as a civic infrastructure platform handling real citizen queues, the system requires:
 1. Verifiable user identity for citizens, desk operators, and administrators.
@@ -14,7 +14,7 @@ To operate securely as a civic infrastructure platform handling real citizen que
 5. Seamless compatibility with HTTP short polling (ADR-0005) without introducing session state on backend nodes.
 
 ## Decision
-QueueLess Bharat implements a stateless, token-based identity and authorization boundary:
+QueuelessBharat implements a stateless, token-based identity and authorization boundary:
 
 ### 1. Identity Model
 - A relational `users` table linked directly to PostgreSQL.

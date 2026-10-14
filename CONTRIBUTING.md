@@ -1,6 +1,6 @@
-# Contributing to QueueLess Bharat
+# Contributing to QueuelessBharat
 
-Welcome to the QueueLess Bharat project! We appreciate contributions that help bring transparency and predictability to civic waiting times across India.
+Welcome to the QueuelessBharat project! We appreciate contributions that help bring transparency and predictability to civic waiting times across India.
 
 To maintain code quality, security, and architectural integrity, all contributors and engineering agents are expected to follow these guidelines.
 

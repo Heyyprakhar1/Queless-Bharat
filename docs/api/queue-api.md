@@ -1,4 +1,4 @@
-# QueueLess Bharat API Specification (Milestone 4 Auth & RBAC Hardened)
+# QueuelessBharat API Specification (Milestone 4 Auth & RBAC Hardened)
 
 > **Base URL:** `/api/v1`  
 > **Protocol:** HTTP/1.1 REST  
@@ -9,11 +9,11 @@
 
 ## 1. Overview & Error Semantics
 
-The QueueLess Bharat API provides clean RESTful interfaces for catalog management, queue lifecycle operations, citizen wait observations, deterministic wait-time projections, and Role-Based Access Control (RBAC).
+The QueuelessBharat API provides clean RESTful interfaces for catalog management, queue lifecycle operations, citizen wait observations, deterministic wait-time projections, and Role-Based Access Control (RBAC).
 
 ### Standard HTTP Status Codes
 
-| Code | Status | Meaning in QueueLess Bharat |
+| Code | Status | Meaning in QueuelessBharat |
 | :--- | :--- | :--- |
 | **`200 OK`** | Success | Query returned or mutation processed successfully |
 | **`201 Created`** | Created | Entity created successfully |

@@ -17,7 +17,7 @@ export const mr: TranslationDictionary = {
     showcase: 'प्रमुख केंद्र',
   },
   header: {
-    appTitle: 'QueueLess भारत',
+    appTitle: 'QueuelessBharat',
     urbanMarkets: '२० नागरी शहरे',
     tagline: 'जाण्यापूर्वी जाणून घ्या • अचूक भारतीय नागरी रांग नेटवर्क',
     citizenPortal: 'नागरीक पोर्टल',
@@ -74,7 +74,7 @@ export const mr: TranslationDictionary = {
     confidenceMedium: 'मध्यम',
     confidenceLow: 'कमी',
     policyNote:
-      'QueueLess भारत प्रमाणित सेवा नमुन्यांशिवाय कधीही खोटे प्रतीक्षा अंदाज तयार करत नाही.',
+      'QueuelessBharat प्रमाणित सेवा नमुन्यांशिवाय कधीही खोटे प्रतीक्षा अंदाज तयार करत नाही.',
     sampleBaseline: 'नमुना आधार: {count} पूर्ण झालेली सेवा सत्रे',
     counterThroughput: 'काउंटर थ्रूपुट: ~{rate} नागरिक/तास प्रति सक्रिय डेस्क',
     notice: 'सूचना:',
@@ -140,7 +140,7 @@ export const mr: TranslationDictionary = {
     authNotice: 'प्रमाणीकरण सूचना',
     verifiedCitizenEntry: 'प्रमाणित नागरीक प्रवेश',
     verifiedCitizenEntryDesc:
-      'आपले नागरीक रांग टोकन मिळवण्यासाठी, ट्रॅक करण्यासाठी आणि व्यवस्थापित करण्यासाठी Google सह साइन इन करा. गैरवापर रोखण्यासाठी QueueLess Google OpenID Connect वापरते.',
+      'आपले नागरीक रांग टोकन मिळवण्यासाठी, ट्रॅक करण्यासाठी आणि व्यवस्थापित करण्यासाठी Google सह साइन इन करा. गैरवापर रोखण्यासाठी QueuelessBharat Google OpenID Connect वापरते.',
     openIdScopeNote: 'फक्त मानक OpenID प्रोफाइल आणि ईमेल परवानग्या मागितल्या जातात.',
     staffPortalNotice:
       'कर्मचारी पोर्टल: काउंटर ऑपरेटर आणि प्रशासकांसाठी. दिलेली माहिती प्रविष्ट करा. परवानग्या बॅकएंडद्वारे तपासल्या जातात.',
@@ -249,7 +249,7 @@ export const mr: TranslationDictionary = {
     lastChecked: 'शेवटची तपासणी: {time}',
   },
   footer: {
-    title: 'QueueLess भारत — M6.1 भारत डेमो कव्हरेज',
+    title: 'QueuelessBharat — M6.1 भारत डेमो कव्हरेज',
     subtitle:
       'प्रमुख शहरे: पुणे, मुंबई, बंगळुरू, चेन्नई, कोलकाता, दिल्ली, लखनौ, पाटणा • शुद्ध अचूक रांग इंजिन',
   },

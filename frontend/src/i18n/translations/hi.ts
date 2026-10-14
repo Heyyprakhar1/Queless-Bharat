@@ -17,7 +17,7 @@ export const hi: TranslationDictionary = {
     showcase: 'प्रमुख',
   },
   header: {
-    appTitle: 'QueueLess भारत',
+    appTitle: 'QueuelessBharat',
     urbanMarkets: '२० शहरी केंद्र',
     tagline: 'जाने से पहले जानें • सटीक भारतीय नागरिक कतार नेटवर्क',
     citizenPortal: 'नागरिक पोर्टल',
@@ -74,7 +74,7 @@ export const hi: TranslationDictionary = {
     confidenceMedium: 'मध्यम',
     confidenceLow: 'निम्न',
     policyNote:
-      'QueueLess भारत प्रमाणित सेवा नमूनों के बिना कभी भी गलत प्रतीक्षा अनुमान प्रस्तुत नहीं करता।',
+      'QueuelessBharat प्रमाणित सेवा नमूनों के बिना कभी भी गलत प्रतीक्षा अनुमान प्रस्तुत नहीं करता।',
     sampleBaseline: 'नमूना आधार: {count} पूर्ण सेवा सत्र',
     counterThroughput: 'काउंटर थ्रूपुट: ~{rate} नागरिक/घंटा प्रति सक्रिय डेस्क',
     notice: 'सूचना:',
@@ -140,7 +140,7 @@ export const hi: TranslationDictionary = {
     authNotice: 'प्रमाणीकरण सूचना',
     verifiedCitizenEntry: 'सत्यापित नागरिक प्रवेश',
     verifiedCitizenEntryDesc:
-      'अपने नागरिक कतार टोकन जारी करने, ट्रैक करने और प्रबंधित करने के लिए Google से साइन इन करें। QueueLess प्रतिरूपण रोकने के लिए Google OpenID Connect का उपयोग करता है।',
+      'अपने नागरिक कतार टोकन जारी करने, ट्रैक करने और प्रबंधित करने के लिए Google से साइन इन करें। QueuelessBharat प्रतिरूपण रोकने के लिए Google OpenID Connect का उपयोग करता है।',
     openIdScopeNote: 'केवल मानक OpenID प्रोफ़ाइल और ईमेल अनुमतियों का अनुरोध किया जाता है।',
     staffPortalNotice:
       'कर्मचारी पोर्टल: काउंटर ऑपरेटरों और सिस्टम प्रशासकों के लिए। आवंटित क्रेडेंशियल दर्ज करें। अनुमतियाँ बैकएंड द्वारा सत्यापित की जाती हैं।',
@@ -249,7 +249,7 @@ export const hi: TranslationDictionary = {
     lastChecked: 'अंतिम जाँच: {time}',
   },
   footer: {
-    title: 'QueueLess भारत — M6.1 भारत डेमो कवरेज',
+    title: 'QueuelessBharat — M6.1 भारत डेमो कवरेज',
     subtitle:
       'प्रमुख शहर: पुणे, मुंबई, बेंगलुरु, चेन्नई, कोलकाता, दिल्ली, लखनऊ, पटना • शुद्ध सटीक कतार इंजन',
   },
