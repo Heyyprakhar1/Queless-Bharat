@@ -483,9 +483,7 @@ class TestGoogleCitizenAuthentication:
                 with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload):
                     return await svc_b.authenticate_google_user("dummy.token.b")
 
-        res_a, res_b = await asyncio.wait_for(
-            asyncio.gather(worker_a(), worker_b()), timeout=15.0
-        )
+        res_a, res_b = await asyncio.wait_for(asyncio.gather(worker_a(), worker_b()), timeout=15.0)
 
         user_a, token_a = res_a
         user_b, token_b = res_b

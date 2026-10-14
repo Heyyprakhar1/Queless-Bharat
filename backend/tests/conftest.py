@@ -15,15 +15,17 @@ from app.domain.enums import UserRole
 from app.domain.models import User
 from app.main import app
 
-DATABASE_FIXTURES: frozenset[str] = frozenset({
-    "db_session",
-    "client",
-    "unauth_client",
-    "make_user",
-    "admin_auth",
-    "operator_auth",
-    "citizen_auth",
-})
+DATABASE_FIXTURES: frozenset[str] = frozenset(
+    {
+        "db_session",
+        "client",
+        "unauth_client",
+        "make_user",
+        "admin_auth",
+        "operator_auth",
+        "citizen_auth",
+    }
+)
 
 
 @pytest.fixture(autouse=True)

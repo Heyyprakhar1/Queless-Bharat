@@ -20,27 +20,31 @@ class UnsafeDatabaseOperationError(RuntimeError):
 
 
 # Databases that are NEVER permitted to be targeted by destructive test operations
-FORBIDDEN_DATABASES: frozenset[str] = frozenset({
-    "queless_db",
-    "postgres",
-    "template0",
-    "template1",
-    "master",
-    "model",
-    "msdb",
-    "defaultdb",
-    "main",
-    "prod",
-    "production",
-    "staging",
-})
+FORBIDDEN_DATABASES: frozenset[str] = frozenset(
+    {
+        "queless_db",
+        "postgres",
+        "template0",
+        "template1",
+        "master",
+        "model",
+        "msdb",
+        "defaultdb",
+        "main",
+        "prod",
+        "production",
+        "staging",
+    }
+)
 
 # Explicitly approved test database names
-APPROVED_EXPLICIT_TEST_DATABASES: frozenset[str] = frozenset({
-    "queless_demo_test",
-    "queless_test",
-    "queless_pytest_tmp",
-})
+APPROVED_EXPLICIT_TEST_DATABASES: frozenset[str] = frozenset(
+    {
+        "queless_demo_test",
+        "queless_test",
+        "queless_pytest_tmp",
+    }
+)
 
 
 def is_approved_test_database_name(db_name: str | None) -> bool:

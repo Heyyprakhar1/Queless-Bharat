@@ -103,8 +103,7 @@ def test_approved_dedicated_test_database_accepted_with_explicit_flag():
     settings = _build_test_settings(db_name="queless_demo_test")
     assert validate_test_database_config(settings=settings, testing_flag="1") == "queless_demo_test"
     assert (
-        validate_test_database_config(settings=settings, testing_flag="yes")
-        == "queless_demo_test"
+        validate_test_database_config(settings=settings, testing_flag="yes") == "queless_demo_test"
     )
 
 
