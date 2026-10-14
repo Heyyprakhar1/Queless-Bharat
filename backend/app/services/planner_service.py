@@ -842,26 +842,55 @@ class PlannerService:
         self.estimation_service = EstimationService(session)
 
     def _resolve_document_checklist(
-        self, service_id: uuid.UUID, service_name: str
+        self,
+        service_id: uuid.UUID,
+        service_name: str,
+        city: str | None = None,
     ) -> DocumentChecklist:
         """Resolves authoritative document checklist for the given service."""
         lower_name = service_name.lower().strip()
 
         matched_spec = None
-        for _, spec in _VERIFIED_CHECKLIST_CATALOG.items():
+        matched_key = None
+        for key, spec in _VERIFIED_CHECKLIST_CATALOG.items():
             if any(substring in lower_name for substring in spec["match_substrings"]):
                 matched_spec = spec
+                matched_key = key
                 break
 
         if matched_spec:
             verif_status = matched_spec.get("verification_status", "VERIFIED")
+            source_title = matched_spec["source_title"]
+            source_url = matched_spec["source_url"]
+
+            # City-aware authority and source URL resolution for municipal civic services
+            if matched_key == "birth_and_death_certificate":
+                city_clean = city.strip().lower() if city else None
+                if city_clean == "patna":
+                    # Patna Municipal Corporation under federal
+                    # Registration of Births and Deaths Act 1969.
+                    # Portal URL is not verified in repository; do not fabricate.
+                    source_title = (
+                        "Patna Municipal Corporation (PMC) / "
+                        "Registration of Births and Deaths Act 1969"
+                    )
+                    source_url = None
+                    verif_status = "PARTIALLY_VERIFIED"
+                elif city_clean and city_clean != "pune":
+                    source_title = (
+                        f"{city.strip()} Municipal Authority / "
+                        "Registration of Births and Deaths Act 1969"
+                    )
+                    source_url = None
+                    verif_status = "PARTIALLY_VERIFIED"
+
             return DocumentChecklist(
                 service_id=service_id,
                 service_name=service_name,
                 verification_status=verif_status,
                 has_verified_checklist=verif_status in ("VERIFIED", "PARTIALLY_VERIFIED"),
-                source_title=matched_spec["source_title"],
-                source_url=matched_spec["source_url"],
+                source_title=source_title,
+                source_url=source_url,
                 verification_date=matched_spec["verification_date"],
                 disclaimer="Completing this checklist does not guarantee approval or service.",
                 items=matched_spec["items"],
@@ -991,18 +1020,33 @@ class PlannerService:
         now = datetime.now(UTC)
 
         # 2. Query deterministic queue status from EstimationService
-        queue_status = await self.estimation_service.get_service_queue_status(
-            service_id=service_id, persist_estimate=False
-        )
-
-        # 3. Derive deterministic arrival window recommendation
-        arrival_window = self._calculate_arrival_window(queue_status, now)
-
-        # 4. Resolve verified document checklist
-        document_checklist = self._resolve_document_checklist(service.id, service.name)
+        try:
+            queue_status = await self.estimation_service.get_service_queue_status(
+                service_id=service_id, persist_estimate=False
+            )
+            # 3. Derive deterministic arrival window recommendation
+            arrival_window = self._calculate_arrival_window(queue_status, now)
+            is_simulated = queue_status.is_simulated
+        except Exception:
+            # Telemetry degradation: queue estimation failure must not block document checklist
+            arrival_window = ArrivalWindowRecommendation(
+                is_recommended=False,
+                confidence=None,
+                data_freshness_seconds=None,
+                last_updated=now,
+                reason="Live queue telemetry is currently unavailable.",
+            )
+            is_simulated = True
 
         location_name = service.location.name if service.location else "Unknown Location"
         city = service.location.city if service.location else "Unknown City"
+
+        # 4. Resolve verified document checklist with city context
+        document_checklist = self._resolve_document_checklist(
+            service.id,
+            service.name,
+            city=service.location.city if service.location else None,
+        )
 
         return VisitPlanResponse(
             service_id=service.id,
@@ -1011,5 +1055,5 @@ class PlannerService:
             city=city,
             arrival_window=arrival_window,
             document_checklist=document_checklist,
-            is_simulated=queue_status.is_simulated,
+            is_simulated=is_simulated,
         )

@@ -18,6 +18,9 @@ interface IndiaDemoExplorerProps {
   demoQueueError: string | null
   onTestServiceInTokenDesk: (serviceId: string) => void
   onCheckQueue?: () => void
+  facilitiesLoading?: boolean
+  facilitiesError?: string | null
+  onRetryFacilities?: () => void
 }
 
 const ALL_20_CITIES = [
@@ -109,6 +112,9 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
   demoQueueError,
   onTestServiceInTokenDesk,
   onCheckQueue,
+  facilitiesLoading = false,
+  facilitiesError = null,
+  onRetryFacilities,
 }) => {
   const { t } = useLanguage()
   const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
@@ -173,53 +179,31 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
           </div>
         </div>
 
-        {/* CITY QUICK SELECTOR BAR: 20 Urban Markets */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-              <svg className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span>{t('discovery.selectMarket')}</span>
-            </label>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              {t('discovery.activeCity')} <strong className="text-slate-900 dark:text-slate-100">{selectedCity}</strong>
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 bg-slate-50/70 dark:bg-slate-850/50 rounded-xl border border-slate-200/80 dark:border-slate-800">
-            {activeCityList.map((city) => (
+        {/* Actionable Error State for Facilities */}
+        {facilitiesError && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
+          >
+            <div className="flex items-center space-x-2">
+              <span className="font-bold">{t('common.error')}:</span>
+              <span>{facilitiesError}</span>
+            </div>
+            {onRetryFacilities && (
               <button
-                key={city}
                 type="button"
-                onClick={() => onSelectCity(city)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center space-x-1 select-none ${
-                  selectedCity === city
-                    ? 'bg-blue-700 text-white shadow-xs font-semibold'
-                    : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                }`}
+                onClick={onRetryFacilities}
+                className="px-2.5 py-1 text-xs font-semibold rounded bg-rose-100 hover:bg-rose-200 dark:bg-rose-900 dark:hover:bg-rose-800 text-rose-900 dark:text-rose-100 cursor-pointer transition"
               >
-                <span>{city}</span>
-                {city === 'Pune' && (
-                  <span
-                    className={`text-[9px] px-1 rounded font-bold uppercase ${
-                      selectedCity === 'Pune'
-                        ? 'bg-blue-900 text-amber-300'
-                        : 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200'
-                    }`}
-                  >
-                    {t('common.showcase')}
-                  </span>
-                )}
+                {t('common.refresh')}
               </button>
-            ))}
+            )}
           </div>
-        </div>
+        )}
 
         {/* HORIZONTAL SELECTOR ROW ON DESKTOP: City -> Facility -> Service -> Check Queue */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-1">
-          {/* Step 1: City Dropdown */}
+          {/* Step 1: City Dropdown (Single Authoritative City Control) */}
           <div className="md:col-span-3 space-y-1">
             <label htmlFor="city-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
               {t('discovery.step1City')}
@@ -245,17 +229,19 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
                 {t('discovery.step2Facility')}
               </label>
               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700">
-                {t('discovery.availableCount', { count: facilities.length })}
+                {facilitiesLoading ? t('common.loading') : t('discovery.availableCount', { count: facilities.length })}
               </span>
             </div>
             <select
               id="facility-select"
               value={selectedFacilityId}
               onChange={(e) => onSelectFacility(e.target.value)}
-              disabled={facilities.length === 0}
+              disabled={facilitiesLoading || facilities.length === 0}
               className="w-full text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-2xs disabled:bg-slate-100 dark:disabled:bg-slate-850 disabled:text-slate-400 dark:disabled:text-slate-600"
             >
-              {facilities.length === 0 ? (
+              {facilitiesLoading ? (
+                <option value="" disabled>{t('common.loading')}</option>
+              ) : facilities.length === 0 ? (
                 <option value="">{t('discovery.noFacilities')}</option>
               ) : (
                 facilities.map((fac) => (
@@ -309,16 +295,31 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
                   projectionEl?.scrollIntoView({ behavior: 'smooth' })
                 }
               }}
-              disabled={facilityServices.length === 0}
+              disabled={!selectedDemoServiceId || demoQueueLoading}
               className="w-full py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-2xs cursor-pointer flex items-center justify-center space-x-1.5 select-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              <span>Check Queue</span>
+              <span>{demoQueueLoading ? t('common.loading') : 'Check Queue'}</span>
             </button>
           </div>
         </div>
+
+        {/* Empty Catalog Notice when City has 0 Facilities */}
+        {!facilitiesLoading && !facilitiesError && facilities.length === 0 && (
+          <div
+            id="empty-facilities-notice"
+            className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-dashed border-slate-250 dark:border-slate-750 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1"
+          >
+            <p className="font-semibold text-slate-700 dark:text-slate-300">
+              No registered public facilities in {selectedCity}
+            </p>
+            <p>
+              Please select another city jurisdiction (such as Pune) to explore public offices, queue estimates, and document checklists.
+            </p>
+          </div>
+        )}
 
         {/* SPATIAL LOCATION & FACILITY CONTEXT CARD */}
         {selectedFacility && (
@@ -534,7 +535,7 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
               </span>
 
               <div className="my-1.5">
-                {demoQueueStatus.estimated_wait.is_available ? (
+                {demoQueueStatus.estimated_wait?.is_available ? (
                   <div>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                       {demoQueueStatus.estimated_wait.lower_minutes}&ndash;
@@ -574,7 +575,7 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
                       <span>{t('queue.estimateUnavailable')}</span>
                     </div>
                     <p className="text-xs text-amber-950 dark:text-amber-100 font-medium">
-                      {demoQueueStatus.estimated_wait.reason}
+                      {demoQueueStatus.estimated_wait?.reason || t('queue.zeroFabricationSubtitle')}
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-0.5">
                       {t('queue.policyNote')}
@@ -584,7 +585,7 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
               </div>
 
               <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                {demoQueueStatus.estimated_wait.is_available
+                {demoQueueStatus.estimated_wait?.is_available
                   ? t('queue.mathRangeSubtitle')
                   : t('queue.zeroFabricationSubtitle')}
               </span>
@@ -592,14 +593,14 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
           </div>
 
           {/* Mathematical Signals & Explanation */}
-          {demoQueueStatus.estimated_wait.is_available && (
+          {demoQueueStatus.estimated_wait?.is_available && (
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
               <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center space-x-1.5">
                 <svg className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 <span>
-                  {t('queue.sampleBaseline', { count: demoQueueStatus.estimated_wait.sample_size })}
+                  {t('queue.sampleBaseline', { count: demoQueueStatus.estimated_wait.sample_size ?? 0 })}
                 </span>
               </div>
               {typeof demoQueueStatus.estimated_wait.supporting_signals?.service_rate_per_hour ===
@@ -652,6 +653,45 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
                 <span>&rarr;</span>
               </button>
             </div>
+          </div>
+        </div>
+      ) : selectedDemoService ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 sm:p-8 text-center space-y-4">
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="font-serif text-lg font-bold text-slate-900 dark:text-slate-100">
+              {selectedDemoService.name}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {selectedFacility?.name} &bull; {selectedCity}
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 pt-1">
+              Ready to inspect live waiting times or review the official document checklist for this counter.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (onCheckQueue) onCheckQueue()
+              }}
+              className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-xs cursor-pointer flex items-center space-x-1.5"
+            >
+              <span>Check Queue Status</span>
+            </button>
+            <button
+              id="btn-plan-visit"
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('smart-visit-planner-section')
+                el?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl transition cursor-pointer flex items-center space-x-1.5"
+            >
+              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>{t('planner.planVisitBtn')}</span>
+            </button>
           </div>
         </div>
       ) : (

@@ -194,6 +194,48 @@ def test_checklist_resolution_radiology_pcpndt():
     assert "PCPNDT Act" in rad_map["pcpndt_form_f"].description
 
 
+def test_checklist_resolution_birth_and_death_pune():
+    """Verifies Pune Birth & Death Certificate checklist retains PMC."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    # Explicit city="Pune"
+    checklist_pune = planner._resolve_document_checklist(
+        service_id, "Birth & Death Certificate Desk", city="Pune"
+    )
+    assert checklist_pune.has_verified_checklist is True
+    assert checklist_pune.verification_status == "VERIFIED"
+    assert "Pune Municipal Corporation" in (checklist_pune.source_title or "")
+    assert checklist_pune.source_url == "https://pmc.gov.in/"
+    assert checklist_pune.verification_date == "2026-10-12"
+    assert len(checklist_pune.items) >= 3
+
+    # Default city=None backward-compatibility retains PMC baseline
+    checklist_default = planner._resolve_document_checklist(
+        service_id, "Birth & Death Certificate Desk", city=None
+    )
+    assert checklist_default.has_verified_checklist is True
+    assert checklist_default.verification_status == "VERIFIED"
+    assert "Pune Municipal Corporation" in (checklist_default.source_title or "")
+    assert checklist_default.source_url == "https://pmc.gov.in/"
+
+
+def test_checklist_resolution_birth_and_death_patna():
+    """Verifies Patna Birth & Death Certificate resolves to PMC without fabricating URLs."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    checklist_patna = planner._resolve_document_checklist(
+        service_id, "Birth & Death Certificate Desk", city="Patna"
+    )
+    assert checklist_patna.has_verified_checklist is True
+    assert checklist_patna.verification_status == "PARTIALLY_VERIFIED"
+    assert "Patna Municipal Corporation" in (checklist_patna.source_title or "")
+    assert "Registration of Births and Deaths Act 1969" in (checklist_patna.source_title or "")
+    assert checklist_patna.source_url is None  # Truthful: no unverified URL fabricated
+    assert len(checklist_patna.items) >= 3
+
+
 def test_checklist_resolution_partially_verified_services():
     """Verifies PARTIALLY_VERIFIED status for services with statutory basis but
     municipal/hospital variations.
@@ -313,6 +355,65 @@ def test_arrival_window_deterministic_reproducibility():
     assert res1.assumptions == res2.assumptions
 
 
+def test_arrival_window_freshness_exact_1800_boundary():
+    """Verifies telemetry at exactly 1800 seconds (30m boundary) is accepted as fresh."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    mock_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=10.0,
+        upper_minutes=20.0,
+        expected_minutes=15.0,
+        active_counters=3,
+        people_ahead=8,
+        freshness_seconds=1800,  # Exact 30-minute freshness boundary
+    )
+
+    fixed_now = datetime(2026, 10, 13, 12, 0, 0, tzinfo=UTC)
+    recommendation = planner._calculate_arrival_window(mock_status, fixed_now)
+
+    assert recommendation.is_recommended is True
+    assert recommendation.confidence == EstimateConfidence.HIGH
+    assert recommendation.data_freshness_seconds == 1800
+    assert recommendation.last_updated == fixed_now
+    assert recommendation.window_start_minutes is not None
+    assert recommendation.window_end_minutes is not None
+    assert recommendation.window_start_minutes < recommendation.window_end_minutes
+    assert recommendation.suggested_arrival_text is not None
+
+
+def test_arrival_window_stale_exact_1801_boundary():
+    """Verifies telemetry at 1801 seconds (>1800 boundary) is rejected as stale."""
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+    mock_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=10.0,
+        upper_minutes=20.0,
+        expected_minutes=15.0,
+        active_counters=3,
+        people_ahead=8,
+        freshness_seconds=1801,  # 1 second past freshness boundary
+    )
+
+    fixed_now = datetime(2026, 10, 13, 12, 0, 0, tzinfo=UTC)
+    recommendation = planner._calculate_arrival_window(mock_status, fixed_now)
+
+    assert recommendation.is_recommended is False
+    assert recommendation.data_freshness_seconds == 1801
+    assert recommendation.last_updated == fixed_now
+    assert "stale" in (recommendation.reason or "").lower()
+    assert recommendation.window_start_minutes is None
+    assert recommendation.window_end_minutes is None
+    assert recommendation.suggested_arrival_text is None
+
+
 def test_arrival_window_stale_data_rejection():
     """Verifies telemetry > 1800 seconds (30m) yields truthful unrecommended state."""
     planner = PlannerService(session=MagicMock())
@@ -381,12 +482,17 @@ def test_arrival_window_missing_freshness_rejection():
         freshness_seconds=None,  # type: ignore[arg-type]
     )
 
-    recommendation = planner._calculate_arrival_window(mock_status, datetime.now(UTC))
+    fixed_now = datetime(2026, 10, 13, 12, 0, 0, tzinfo=UTC)
+    recommendation = planner._calculate_arrival_window(mock_status, fixed_now)
 
     assert recommendation.is_recommended is False
+    assert recommendation.data_freshness_seconds is None
+    assert recommendation.last_updated == fixed_now
     reason_str = (recommendation.reason or "").lower()
     assert "freshness is unavailable" in reason_str or "stale" in reason_str
     assert recommendation.window_start_minutes is None
+    assert recommendation.window_end_minutes is None
+    assert recommendation.suggested_arrival_text is None
 
 
 def test_arrival_window_empty_queue_near_zero_wait():
@@ -510,4 +616,93 @@ async def test_get_visit_plan_success():
     assert plan.city == "Pune"
     assert plan.arrival_window.is_recommended is True
     assert plan.document_checklist.has_verified_checklist is True
+    assert len(plan.document_checklist.items) == 4
+
+
+@pytest.mark.asyncio
+async def test_get_visit_plan_patna_birth_and_death():
+    """Verifies get_visit_plan resolves city-aware authority metadata for Patna civic services."""
+    mock_session = AsyncMock()
+    service_id = uuid.uuid4()
+    mock_location = Location(
+        name="Patna Municipal Corporation HQ",
+        city="Patna",
+        state="Bihar",
+        category="Municipal Corporation",
+        address="Maurya Lok Complex, Patna",
+    )
+    mock_service = Service(
+        id=service_id,
+        location_id=mock_location.id,
+        name="Birth & Death Certificate Desk",
+        status="ACTIVE",
+    )
+    mock_service.location = mock_location
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_service
+    mock_session.execute.return_value = mock_result
+
+    planner = PlannerService(mock_session)
+    mock_queue_status = _build_mock_queue_status(
+        service_id,
+        mock_service.name,
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=10.0,
+        upper_minutes=25.0,
+        expected_minutes=18.0,
+        active_counters=3,
+        freshness_seconds=90,
+    )
+    planner.estimation_service.get_service_queue_status = AsyncMock(return_value=mock_queue_status)
+
+    plan = await planner.get_visit_plan(service_id)
+
+    assert plan.service_id == service_id
+    assert plan.city == "Patna"
+    assert plan.document_checklist.has_verified_checklist is True
+    assert plan.document_checklist.verification_status == "PARTIALLY_VERIFIED"
+    assert "Patna Municipal Corporation" in (plan.document_checklist.source_title or "")
+    assert plan.document_checklist.source_url is None
+
+
+@pytest.mark.asyncio
+async def test_get_visit_plan_survives_estimation_service_failure():
+    """Verifies queue estimation error degrades arrival window safely without losing checklist."""
+    mock_session = AsyncMock()
+    service_id = uuid.uuid4()
+    mock_location = Location(
+        name="Pune Regional Transport Office",
+        city="Pune",
+        state="Maharashtra",
+        category="RTO",
+        address="Alandi Road",
+    )
+    mock_service = Service(
+        id=service_id,
+        location_id=mock_location.id,
+        name="Driving Licence Renewal & Biometrics",
+        status="ACTIVE",
+    )
+    mock_service.location = mock_location
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_service
+    mock_session.execute.return_value = mock_result
+
+    planner = PlannerService(mock_session)
+    # Simulate telemetry / queue computation crash
+    planner.estimation_service.get_service_queue_status = AsyncMock(
+        side_effect=RuntimeError("Database telemetry connection lost")
+    )
+
+    plan = await planner.get_visit_plan(service_id)
+
+    assert plan.service_id == service_id
+    assert plan.arrival_window.is_recommended is False
+    assert "unavailable" in (plan.arrival_window.reason or "").lower()
+    # Verified document checklist is preserved
+    assert plan.document_checklist.has_verified_checklist is True
+    assert plan.document_checklist.verification_status == "VERIFIED"
     assert len(plan.document_checklist.items) == 4

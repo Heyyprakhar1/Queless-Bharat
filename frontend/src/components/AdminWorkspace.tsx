@@ -141,7 +141,7 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
             {t('admin.marketsCovered')}
           </span>
           <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-            {cities.length > 0 ? cities.length : 20}
+            {cities.length}
           </div>
           <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('admin.tier1Tier2')}</span>
         </div>
@@ -407,13 +407,20 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
           <select
             value={selectedCity}
             onChange={(e) => onSelectCity(e.target.value)}
-            className="text-xs border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+            disabled={cities.length === 0}
+            className="text-xs border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {cities.map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {cities.length === 0 ? (
+              <option value="" disabled>
+                No registered cities
               </option>
-            ))}
+            ) : (
+              cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))
+            )}
           </select>
         </div>
 

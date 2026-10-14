@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import {
   clearAuthSession,
@@ -82,12 +82,15 @@ function AppContent() {
   const [cities, setCities] = useState<string[]>([])
   const [selectedCity, setSelectedCity] = useState<string>('Pune')
   const [facilities, setFacilities] = useState<Location[]>([])
+  const [facilitiesLoading, setFacilitiesLoading] = useState<boolean>(false)
+  const [facilitiesError, setFacilitiesError] = useState<string | null>(null)
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>('')
   const [facilityServices, setFacilityServices] = useState<Service[]>([])
   const [selectedDemoServiceId, setSelectedDemoServiceId] = useState<string>('')
   const [demoQueueStatus, setDemoQueueStatus] = useState<QueueStatusResponse | null>(null)
   const [demoQueueLoading, setDemoQueueLoading] = useState<boolean>(false)
   const [demoQueueError, setDemoQueueError] = useState<string | null>(null)
+  const latestQueueServiceIdRef = useRef<string>('')
 
   // Citizen Interactive Flow State
   const [services, setServices] = useState<Service[]>([])
@@ -194,35 +197,76 @@ function AppContent() {
     return () => clearInterval(interval)
   }, [])
 
+  // Load facilities for city
+  const loadFacilitiesForCity = useCallback(async (city: string) => {
+    if (!city) return
+    setFacilitiesLoading(true)
+    setFacilitiesError(null)
+    try {
+      const locs = await fetchLocations(city)
+      setFacilities(locs)
+      if (locs.length > 0) {
+        setSelectedFacilityId(locs[0].id)
+      } else {
+        setSelectedFacilityId('')
+        setFacilityServices([])
+        setSelectedDemoServiceId('')
+        setDemoQueueStatus(null)
+      }
+    } catch (err) {
+      setFacilitiesError(err instanceof Error ? err.message : 'Failed to load facilities')
+      setFacilities([])
+      setSelectedFacilityId('')
+      setFacilityServices([])
+      setSelectedDemoServiceId('')
+      setDemoQueueStatus(null)
+    } finally {
+      setFacilitiesLoading(false)
+    }
+  }, [])
+
+  // Cleanly switch city and clear all dependent state to prevent stale data
+  const handleSelectCity = (newCity: string) => {
+    if (newCity === selectedCity) {
+      if (facilities.length === 0) {
+        loadFacilitiesForCity(newCity)
+      }
+      return
+    }
+    setSelectedCity(newCity)
+    setSelectedFacilityId('')
+    setFacilities([])
+    setFacilityServices([])
+    setSelectedDemoServiceId('')
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+    setFacilitiesError(null)
+  }
+
+  // Cleanly switch facility and clear child services/queue state
+  const handleSelectFacility = (newFacilityId: string) => {
+    if (newFacilityId === selectedFacilityId) return
+    setSelectedFacilityId(newFacilityId)
+    setFacilityServices([])
+    setSelectedDemoServiceId('')
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+  }
+
+  // Cleanly switch demo service and reset queue status
+  const handleSelectDemoService = (newServiceId: string) => {
+    if (newServiceId === selectedDemoServiceId) return
+    setSelectedDemoServiceId(newServiceId)
+    setDemoQueueStatus(null)
+    setDemoQueueError(null)
+  }
+
   // Load facilities when selected city changes
   useEffect(() => {
-    if (!selectedCity) return
-    let isCancelled = false
-    async function loadFacilitiesForCity() {
-      try {
-        const locs = await fetchLocations(selectedCity)
-        if (!isCancelled) {
-          setFacilities(locs)
-          if (locs.length > 0) {
-            setSelectedFacilityId(locs[0].id)
-          } else {
-            setSelectedFacilityId('')
-            setFacilityServices([])
-            setSelectedDemoServiceId('')
-            setDemoQueueStatus(null)
-          }
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          setDemoQueueError(err instanceof Error ? err.message : 'Failed to load facilities')
-        }
-      }
+    if (selectedCity) {
+      loadFacilitiesForCity(selectedCity)
     }
-    loadFacilitiesForCity()
-    return () => {
-      isCancelled = true
-    }
-  }, [selectedCity])
+  }, [selectedCity, loadFacilitiesForCity])
 
   // Load services when selected facility changes
   useEffect(() => {
@@ -243,6 +287,9 @@ function AppContent() {
       } catch (err) {
         if (!isCancelled) {
           setDemoQueueError(err instanceof Error ? err.message : 'Failed to load services')
+          setFacilityServices([])
+          setSelectedDemoServiceId('')
+          setDemoQueueStatus(null)
         }
       }
     }
@@ -252,19 +299,26 @@ function AppContent() {
     }
   }, [selectedFacilityId])
 
-  // Load queue status for explorer
+  // Load queue status for explorer with race condition prevention
   const loadDemoQueueStatus = async (serviceId: string) => {
     if (!serviceId) return
+    latestQueueServiceIdRef.current = serviceId
     setDemoQueueLoading(true)
     setDemoQueueError(null)
     try {
       const status = await fetchQueueStatus(serviceId)
-      setDemoQueueStatus(status)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueStatus(status)
+      }
     } catch (err) {
-      setDemoQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
-      setDemoQueueStatus(null)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueError(err instanceof Error ? err.message : 'Failed to fetch queue status')
+        setDemoQueueStatus(null)
+      }
     } finally {
-      setDemoQueueLoading(false)
+      if (latestQueueServiceIdRef.current === serviceId) {
+        setDemoQueueLoading(false)
+      }
     }
   }
 
@@ -604,7 +658,7 @@ function AppContent() {
           <div>
             <div className="flex items-center space-x-3">
               <span className="font-serif font-black text-2xl sm:text-3xl text-slate-950 dark:text-white tracking-tight">
-                QueueLess Bharat
+                QueuelessBharat
               </span>
               <IndianFlag className="w-7 h-4.5 rounded-xs shadow-2xs border border-slate-200 dark:border-slate-700" />
             </div>
@@ -751,16 +805,21 @@ function AppContent() {
               <IndiaDemoExplorer
                 cities={cities}
                 selectedCity={selectedCity}
-                onSelectCity={setSelectedCity}
+                onSelectCity={handleSelectCity}
                 facilities={facilities}
                 selectedFacilityId={selectedFacilityId}
-                onSelectFacility={setSelectedFacilityId}
+                onSelectFacility={handleSelectFacility}
                 facilityServices={facilityServices}
                 selectedDemoServiceId={selectedDemoServiceId}
-                onSelectDemoService={setSelectedDemoServiceId}
+                onSelectDemoService={handleSelectDemoService}
                 demoQueueStatus={demoQueueStatus}
                 demoQueueLoading={demoQueueLoading}
                 demoQueueError={demoQueueError}
+                facilitiesLoading={facilitiesLoading}
+                facilitiesError={facilitiesError}
+                onRetryFacilities={() => {
+                  if (selectedCity) loadFacilitiesForCity(selectedCity)
+                }}
                 onTestServiceInTokenDesk={(serviceId) => {
                   setSelectedServiceId(serviceId)
                   setActiveNav('myTokens')
@@ -772,6 +831,10 @@ function AppContent() {
                 onCheckQueue={() => {
                   if (selectedDemoServiceId) {
                     loadDemoQueueStatus(selectedDemoServiceId)
+                    const waitEl = document.getElementById('demo-wait-projection')
+                    if (waitEl) {
+                      waitEl.scrollIntoView({ behavior: 'smooth' })
+                    }
                   }
                 }}
               />
