@@ -1,6 +1,7 @@
 """Regression tests for the test database safety guard."""
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from app.core.config import Settings
@@ -50,20 +51,20 @@ def test_missing_testing_flag_blocks_destructive_cleanup():
     """Fails closed when TESTING environment variable is missing or false."""
     settings = _build_test_settings(db_name="queless_demo_test")
 
-    # Missing / empty TESTING flag
-    with pytest.raises(UnsafeDatabaseOperationError, match="Explicit test flag TESTING=true is required"):
+    expected_match = "Explicit test flag TESTING=true is required"
+    with pytest.raises(UnsafeDatabaseOperationError, match=expected_match):
         validate_test_database_config(settings=settings, testing_flag="")
 
     # False / invalid TESTING flag
-    with pytest.raises(UnsafeDatabaseOperationError, match="Explicit test flag TESTING=true is required"):
+    with pytest.raises(UnsafeDatabaseOperationError, match=expected_match):
         validate_test_database_config(settings=settings, testing_flag="false")
 
-    with pytest.raises(UnsafeDatabaseOperationError, match="Explicit test flag TESTING=true is required"):
+    with pytest.raises(UnsafeDatabaseOperationError, match=expected_match):
         validate_test_database_config(settings=settings, testing_flag="0")
 
 
 def test_normal_development_database_queless_db_is_rejected():
-    """Fails closed if the database target is a development/production database, even with TESTING=true."""
+    """Fails closed if target is a dev/prod database, even with TESTING=true."""
     settings = _build_test_settings(db_name="queless_db")
 
     with pytest.raises(UnsafeDatabaseOperationError, match="protected non-test database"):
@@ -87,7 +88,13 @@ def test_non_test_naming_pattern_is_rejected():
 
 def test_approved_dedicated_test_database_accepted_with_explicit_flag():
     """Accepts approved test databases when TESTING=true is explicitly set."""
-    for approved_db in ["queless_demo_test", "queless_test", "queless_pytest_tmp", "service_unit_test"]:
+    approved_dbs = [
+        "queless_demo_test",
+        "queless_test",
+        "queless_pytest_tmp",
+        "service_unit_test",
+    ]
+    for approved_db in approved_dbs:
         settings = _build_test_settings(db_name=approved_db)
         validated = validate_test_database_config(settings=settings, testing_flag="true")
         assert validated == approved_db
@@ -95,14 +102,18 @@ def test_approved_dedicated_test_database_accepted_with_explicit_flag():
     # Also accepts numeric "1" or "yes"
     settings = _build_test_settings(db_name="queless_demo_test")
     assert validate_test_database_config(settings=settings, testing_flag="1") == "queless_demo_test"
-    assert validate_test_database_config(settings=settings, testing_flag="yes") == "queless_demo_test"
+    assert (
+        validate_test_database_config(settings=settings, testing_flag="yes")
+        == "queless_demo_test"
+    )
 
 
 def test_production_and_staging_environments_are_rejected():
     """Fails closed if ENVIRONMENT is production or staging, regardless of flags."""
     for env in ["production", "staging"]:
         settings = _build_test_settings(db_name="queless_demo_test", env=env)
-        with pytest.raises(UnsafeDatabaseOperationError, match="Test operations cannot run in production or staging"):
+        match_msg = "Test operations cannot run in production or staging"
+        with pytest.raises(UnsafeDatabaseOperationError, match=match_msg):
             validate_test_database_config(settings=settings, testing_flag="true")
 
 
@@ -128,7 +139,9 @@ def test_database_url_validation_and_disagreement():
         db_name="queless_demo_test",
         database_url="postgresql://user:pass@localhost:5432/queless_db",
     )
-    with pytest.raises(UnsafeDatabaseOperationError, match="DATABASE_URL targets protected database"):
+    with pytest.raises(
+        UnsafeDatabaseOperationError, match="DATABASE_URL targets protected database"
+    ):
         validate_test_database_config(settings=settings_protected_url, testing_flag="true")
 
     # Disagreement between DATABASE_URL and POSTGRES_DB
@@ -144,7 +157,10 @@ def test_database_url_validation_and_disagreement():
         db_name="queless_demo_test",
         database_url="postgresql://user:pass@localhost:5432/queless_demo_test",
     )
-    assert validate_test_database_config(settings=settings_agree, testing_flag="true") == "queless_demo_test"
+    assert (
+        validate_test_database_config(settings=settings_agree, testing_flag="true")
+        == "queless_demo_test"
+    )
 
 
 @pytest.mark.asyncio
@@ -158,7 +174,8 @@ async def test_guard_rejects_when_active_connection_disagrees_with_config():
 
     settings = _build_test_settings(db_name="queless_demo_test")
 
-    with pytest.raises(UnsafeDatabaseOperationError, match="Active database connection is connected to protected database 'queless_db'"):
+    match_msg = "Active database connection is connected to protected database 'queless_db'"
+    with pytest.raises(UnsafeDatabaseOperationError, match=match_msg):
         await assert_safe_test_database(mock_session, settings=settings, testing_flag="true")
 
 
@@ -173,13 +190,14 @@ async def test_guard_rejects_when_active_connection_returns_unapproved_db():
     # Config is queless_demo_test, but connection says queless_analytics_dev
     settings = _build_test_settings(db_name="queless_demo_test")
 
-    with pytest.raises(UnsafeDatabaseOperationError, match="Active database connection is connected to non-test database"):
+    match_msg = "Active database connection is connected to non-test database"
+    with pytest.raises(UnsafeDatabaseOperationError, match=match_msg):
         await assert_safe_test_database(mock_session, settings=settings, testing_flag="true")
 
 
 @pytest.mark.asyncio
 async def test_guard_passes_when_config_and_connection_agree_on_approved_db():
-    """Passes cleanly when both configuration and active connection match an approved test database."""
+    """Passes cleanly when config and connection match an approved test database."""
     mock_session = AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar.return_value = "queless_demo_test"
@@ -199,7 +217,8 @@ async def test_guard_fails_when_current_database_query_fails():
 
     settings = _build_test_settings(db_name="queless_demo_test")
 
-    with pytest.raises(UnsafeDatabaseOperationError, match="Failed to query current database from active connection"):
+    match_msg = "Failed to query current database from active connection"
+    with pytest.raises(UnsafeDatabaseOperationError, match=match_msg):
         await assert_safe_test_database(mock_session, settings=settings, testing_flag="true")
 
 

@@ -538,7 +538,10 @@ class TestGoogleCitizenAuthentication:
             try:
                 async with async_session_factory() as session_a:
                     svc_a = AuthService(session_a)
-                    with patch("google.oauth2.id_token.verify_oauth2_token", return_value=payload_a):
+                    with patch(
+                        "google.oauth2.id_token.verify_oauth2_token",
+                        return_value=payload_a,
+                    ):
                         return await svc_a.authenticate_google_user("dummy.token.a")
             finally:
                 worker_a_committed.set()

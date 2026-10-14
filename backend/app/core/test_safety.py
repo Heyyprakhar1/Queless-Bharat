@@ -7,6 +7,7 @@ misconfigured environment variables or test setups.
 
 import os
 from typing import Any
+
 from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 
@@ -114,8 +115,8 @@ def validate_test_database_config(
     if not is_approved_test_database_name(configured_db):
         raise UnsafeDatabaseOperationError(
             f"Destructive test database operations aborted: Database '{configured_db}' "
-            "is not an approved test database name. Dedicated test databases must end with '_test', "
-            "start with 'test_', or be an approved test database."
+            "is not an approved test database name. Dedicated test databases must end with "
+            "'_test', start with 'test_', or be an approved test database."
         )
 
     # 4. If DATABASE_URL is set, validate that it agrees with POSTGRES_DB
@@ -130,23 +131,27 @@ def validate_test_database_config(
 
         if not url_db:
             raise UnsafeDatabaseOperationError(
-                "Destructive test database operations aborted: DATABASE_URL does not specify a database name."
+                "Destructive test database operations aborted: "
+                "DATABASE_URL does not specify a database name."
             )
 
         if url_db.lower() in FORBIDDEN_DATABASES:
             raise UnsafeDatabaseOperationError(
-                f"Destructive test database operations aborted: DATABASE_URL targets protected database '{url_db}'."
+                "Destructive test database operations aborted: "
+                f"DATABASE_URL targets protected database '{url_db}'."
             )
 
         if not is_approved_test_database_name(url_db):
             raise UnsafeDatabaseOperationError(
-                f"Destructive test database operations aborted: DATABASE_URL targets non-test database '{url_db}'."
+                "Destructive test database operations aborted: "
+                f"DATABASE_URL targets non-test database '{url_db}'."
             )
 
         if url_db.lower() != configured_db.lower():
             raise UnsafeDatabaseOperationError(
-                f"Destructive test database operations aborted: Ambiguous database configuration. "
-                f"DATABASE_URL targets '{url_db}' while POSTGRES_DB is configured as '{configured_db}'."
+                "Destructive test database operations aborted: Ambiguous database configuration. "
+                f"DATABASE_URL targets '{url_db}' while POSTGRES_DB is configured as "
+                f"'{configured_db}'."
             )
 
     return configured_db
@@ -157,7 +162,7 @@ async def assert_safe_test_database(
     settings: Settings | None = None,
     testing_flag: str | None = None,
 ) -> str:
-    """Asynchronously validates that the session is connected to an approved, dedicated test database.
+    """Asynchronously validates session connection to an approved, dedicated test database.
 
     Queries `SELECT current_database()` from the live connection to ensure runtime connection
     target matches configured target and is strictly an approved test database.
@@ -196,8 +201,8 @@ async def assert_safe_test_database(
 
     if actual_db_clean.lower() in FORBIDDEN_DATABASES:
         raise UnsafeDatabaseOperationError(
-            f"SECURITY ALERT: Active database connection is connected to protected database '{actual_db_clean}'! "
-            "Refusing to execute destructive test operations."
+            "SECURITY ALERT: Active database connection is connected to protected database "
+            f"'{actual_db_clean}'! Refusing to execute destructive test operations."
         )
 
     if not is_approved_test_database_name(actual_db_clean):

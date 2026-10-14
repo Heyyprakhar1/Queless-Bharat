@@ -1,18 +1,17 @@
 """SQLAlchemy database engine and async session factory."""
 
+import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 settings = get_settings()
 logger = get_logger("db")
-
-import os
-from sqlalchemy.pool import NullPool
 
 is_testing = os.environ.get("TESTING", "").strip().lower() in ("true", "1", "yes")
 
