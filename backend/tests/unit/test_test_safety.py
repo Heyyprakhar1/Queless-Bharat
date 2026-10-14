@@ -237,4 +237,3 @@ async def test_guard_passes_when_engine_binding_and_connection_match():
 
     result = await assert_safe_test_database(mock_session, settings=settings, testing_flag="true")
     assert result == "queless_demo_test"
-
