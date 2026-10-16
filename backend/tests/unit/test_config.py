@@ -123,3 +123,42 @@ def test_database_url_generation() -> None:
         settings.sync_database_url
         == "postgresql+psycopg://testuser:testpassword@db.example.internal:5432/testdb"
     )
+
+
+def test_database_url_special_characters_quoted() -> None:
+    """Verifies that special characters in credentials are safely URL-encoded."""
+    settings = Settings(
+        POSTGRES_SERVER="db.example.internal",
+        POSTGRES_PORT=5432,
+        POSTGRES_USER="user@domain",
+        POSTGRES_PASSWORD="p@ss:w/ord#1?",
+        POSTGRES_DB="testdb",
+    )
+    assert (
+        settings.async_database_url
+        == "postgresql+asyncpg://user%40domain:p%40ss%3Aw%2Ford%231%3F@db.example.internal:5432/testdb"
+    )
+    assert (
+        settings.sync_database_url
+        == "postgresql+psycopg://user%40domain:p%40ss%3Aw%2Ford%231%3F@db.example.internal:5432/testdb"
+    )
+
+
+def test_database_url_override_schemes() -> None:
+    """Verifies that direct DATABASE_URL supports postgres:// and postgresql:// schemes."""
+    # Test postgres:// scheme normalization
+    s_postgres = Settings(DATABASE_URL="postgres://user:pass@host:5432/db")
+    assert s_postgres.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+    assert s_postgres.sync_database_url == "postgresql+psycopg://user:pass@host:5432/db"
+
+    # Test postgresql:// scheme
+    s_psql = Settings(DATABASE_URL="postgresql://user:pass@host:5432/db?sslmode=require")
+    assert (
+        s_psql.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db?sslmode=require"
+    )
+    assert s_psql.sync_database_url == "postgresql+psycopg://user:pass@host:5432/db?sslmode=require"
+
+    # Test asyncpg scheme input
+    s_async = Settings(DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db")
+    assert s_async.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+    assert s_async.sync_database_url == "postgresql+psycopg://user:pass@host:5432/db"

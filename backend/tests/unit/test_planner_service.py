@@ -409,9 +409,9 @@ def test_arrival_window_stale_exact_1801_boundary():
     assert recommendation.confidence is None
     assert recommendation.data_freshness_seconds == 1801
     assert recommendation.last_updated == fixed_now
-    assert (
-        recommendation.reason
-        == "Current estimate unavailable — latest queue data is stale. Please verify with the facility."
+    assert recommendation.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
     )
     assert recommendation.window_start_minutes is None
     assert recommendation.window_end_minutes is None
@@ -419,7 +419,9 @@ def test_arrival_window_stale_exact_1801_boundary():
 
 
 def test_arrival_window_stale_data_rejection():
-    """Verifies telemetry > 1800 seconds (30m) yields truthful unrecommended state with exact message."""
+    """Verifies telemetry > 1800 seconds (30m) yields truthful unrecommended state
+    with exact message.
+    """
     planner = PlannerService(session=MagicMock())
     service_id = uuid.uuid4()
     mock_status = _build_mock_queue_status(
@@ -434,9 +436,9 @@ def test_arrival_window_stale_data_rejection():
 
     assert recommendation.is_recommended is False
     assert recommendation.confidence is None
-    assert (
-        recommendation.reason
-        == "Current estimate unavailable — latest queue data is stale. Please verify with the facility."
+    assert recommendation.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
     )
     assert recommendation.window_start_minutes is None
     assert recommendation.window_end_minutes is None
@@ -489,9 +491,9 @@ def test_arrival_window_fresh_vs_stale_telemetry_contrast():
     assert stale_rec.suggested_arrival_text is None
     assert stale_rec.window_start_minutes is None
     assert stale_rec.window_end_minutes is None
-    assert (
-        stale_rec.reason
-        == "Current estimate unavailable — latest queue data is stale. Please verify with the facility."
+    assert stale_rec.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
     )
 
 

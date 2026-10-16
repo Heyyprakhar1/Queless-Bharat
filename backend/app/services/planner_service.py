@@ -949,7 +949,10 @@ class PlannerService:
                 confidence=None,
                 data_freshness_seconds=freshness_sec,
                 last_updated=now,
-                reason="Current estimate unavailable — latest queue data is stale. Please verify with the facility.",
+                reason=(
+                    "Current estimate unavailable — latest queue data is stale. "
+                    "Please verify with the facility."
+                ),
             )
 
         # 4. Check for low confidence or sparse data
