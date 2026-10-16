@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '../i18n'
 import type { User, UserRole } from '../types/auth'
 import type { Location } from '../types/queue'
+import type { HealthResponse } from '../types/health'
 import { listUsers, activateUser, createPrivilegedUser } from '../api/auth'
+import { fetchHealth } from '../api/health'
+import { HealthPanel } from './HealthPanel'
 
 interface AdminWorkspaceProps {
   currentUser: User
@@ -38,6 +41,33 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
   const [newFullName, setNewFullName] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('OPERATOR')
   const [isProvisioning, setIsProvisioning] = useState(false)
+
+  // Internal health & infrastructure diagnostics (authorized admins only)
+  const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [healthLoading, setHealthLoading] = useState<boolean>(true)
+  const [healthError, setHealthError] = useState<string | null>(null)
+  const [lastChecked, setLastChecked] = useState<Date | null>(null)
+
+  const checkHealth = useCallback(async () => {
+    setHealthLoading(true)
+    setHealthError(null)
+    try {
+      const data = await fetchHealth()
+      setHealth(data)
+      setLastChecked(new Date())
+    } catch (err) {
+      setHealthError(err instanceof Error ? err.message : 'Unable to connect to backend')
+      setHealth(null)
+    } finally {
+      setHealthLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    checkHealth()
+    const interval = setInterval(checkHealth, 15000)
+    return () => clearInterval(interval)
+  }, [checkHealth])
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -126,6 +156,7 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
             onClick={() => {
               onRefreshData()
               loadUsers()
+              checkHealth()
             }}
             className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition cursor-pointer"
           >
@@ -454,6 +485,17 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Infrastructure Health & Diagnostics (Admin Workspace Only) */}
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+        <HealthPanel
+          health={health}
+          healthLoading={healthLoading}
+          healthError={healthError}
+          lastChecked={lastChecked}
+          onCheckHealth={checkHealth}
+        />
       </div>
     </div>
   )

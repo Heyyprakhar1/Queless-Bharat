@@ -128,22 +128,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleNavClick = (id: SidebarTab) => {
     onSelectTab(id)
 
-    // Smooth scroll to relevant parts of the page for high usability
-    if (id === 'myTokens') {
-      const el = document.getElementById('citizen-token-desk-section')
-      el?.scrollIntoView({ behavior: 'smooth' })
-    } else if (id === 'findServices' || id === 'home') {
-      const el = document.getElementById('service-discovery-heading')
-      el?.scrollIntoView({ behavior: 'smooth' })
-    } else if (id === 'nearbyCenters') {
-      const el = document.getElementById('facility-spatial-card')
-      el?.scrollIntoView({ behavior: 'smooth' })
-    } else if (id === 'citizenGuide') {
-      const el =
-        document.getElementById('smart-visit-planner-section') ||
-        document.getElementById('citizen-explainer-section')
-      el?.scrollIntoView({ behavior: 'smooth' })
+    const targetMap: Record<SidebarTab, string> = {
+      myTokens: 'citizen-token-desk-section',
+      findServices: 'service-discovery-heading',
+      home: 'service-discovery-heading',
+      nearbyCenters: 'facility-spatial-card',
+      citizenGuide: 'smart-visit-planner-section',
     }
+
+    const targetId = targetMap[id]
+    if (!targetId) return
+
+    // Immediately attempt to scroll if the element is already in the DOM
+    const el = document.getElementById(targetId)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+
+    // If target element is not in DOM yet (e.g. unmounted during tab switch),
+    // synchronize with animation frames until mounted or max attempts reached
+    let attempts = 0
+    const checkAndScroll = () => {
+      attempts++
+      const targetEl = document.getElementById(targetId)
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth' })
+      } else if (attempts < 15) {
+        requestAnimationFrame(checkAndScroll)
+      }
+    }
+    requestAnimationFrame(checkAndScroll)
   }
 
   return (

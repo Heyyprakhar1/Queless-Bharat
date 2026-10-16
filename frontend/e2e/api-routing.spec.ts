@@ -58,10 +58,9 @@ test.describe('API Routing & Base URL Configuration', () => {
 
     await page.goto('/')
 
-    // Wait for health check to complete
-    await expect(page.getByRole('heading', { name: 'Backend Health & Readiness' })).toBeVisible()
-    await expect(page.getByText('PostgreSQL Database')).toBeVisible()
-    await expect(page.getByText('Connected')).toBeVisible()
+    // Wait for page to initialize; public citizen homepage does not show Backend Health & Readiness
+    await expect(page.locator('#city-select')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Backend Health & Readiness' })).not.toBeVisible()
 
     // Verify API requests were made and intercepted
     expect(apiRequests.length).toBeGreaterThan(0)

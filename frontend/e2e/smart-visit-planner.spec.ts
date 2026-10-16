@@ -93,7 +93,8 @@ const staleVisitPlanFixture = {
     suggested_arrival_text: null,
     data_freshness_seconds: 1801, // Exact 1801s stale boundary (>1800s)
     last_updated: '2026-10-13T10:00:00Z',
-    reason: 'Queue telemetry is stale (>30 minutes old). Arrival window suppressed to prevent citizen misguidance.',
+    reason:
+      'Current estimate unavailable — latest queue data is stale. Please verify with the facility.',
     assumptions: [],
     disclaimer:
       'This arrival window is a statistical projection based on recent counter throughput, NOT an appointment or guarantee of service. Arrival within this window does not guarantee shorter waiting times.',
@@ -245,9 +246,15 @@ test.describe('Smart Visit Planner E2E Suite', () => {
     await expect(plannerSection).toBeVisible()
     await expect(plannerSection.getByRole('heading', { name: /Driving Licence Renewal/ })).toBeVisible()
 
-    // 5. Verify Feature A: Arrival window recommendation is strictly suppressed
+    // 5. Verify Feature A: Arrival window recommendation and confidence are strictly suppressed
     await expect(plannerSection.getByText('Suggested Arrival Window')).not.toBeVisible()
-    await expect(plannerSection.getByText(/Queue telemetry is stale/i)).toBeVisible()
+    await expect(plannerSection.getByText(/Within /i)).not.toBeVisible()
+    await expect(plannerSection.getByText(/Model Confidence/i)).not.toBeVisible()
+    await expect(
+      plannerSection.getByText(
+        'Current estimate unavailable — latest queue data is stale. Please verify with the facility.'
+      )
+    ).toBeVisible()
     await expect(
       plannerSection.getByText(/QueuelessBharat strictly reports unavailable states/i)
     ).toBeVisible()

@@ -300,7 +300,7 @@ export const en: TranslationDictionary = {
     telemetryFreshness: 'Telemetry Freshness: {seconds}s ago',
     assumptionsHeading: 'Operational Assumptions',
     disclaimerHeading: 'Honest Advisory & Disclaimer',
-    staleDataNotice: 'Queue telemetry is stale or sparse. A reliable arrival window cannot be recommended without fresh observations.',
+    staleDataNotice: 'Current estimate unavailable — latest queue data is stale. Please verify with the facility.',
     checklistHeading: 'Document Readiness Checklist',
     verifiedSourceLabel: 'Official Verified Source',
     verificationDateLabel: 'Last Verified: {date}',

@@ -300,7 +300,7 @@ export const mr: TranslationDictionary = {
     telemetryFreshness: 'डेटा ताजेपणा: {seconds} सेकंद आधी',
     assumptionsHeading: 'परिचालन गृहीतके',
     disclaimerHeading: 'प्रामाणिक सल्ला आणि अस्वीकरण',
-    staleDataNotice: 'रांगेचा डेटा जुना किंवा अपुरा आहे. ताज्या नोंदींशिवाय विश्वासार्ह आगमन वेळेची शिफारस केली जाऊ शकत नाही.',
+    staleDataNotice: 'सध्याचा अंदाज अनुपलब्ध आहे — नवीनतम रांगेचा डेटा जुना आहे. कृपया सुविधेकडून खात्री करा.',
     checklistHeading: 'दस्तऐवज तयारी चेकलिस्ट',
     verifiedSourceLabel: 'अधिकृत पडताळणी केलेले स्त्रोत',
     verificationDateLabel: 'पडताळणी तारीख: {date}',

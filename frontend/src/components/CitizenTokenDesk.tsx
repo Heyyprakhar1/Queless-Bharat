@@ -24,7 +24,9 @@ interface CitizenTokenDeskProps {
   onJoinQueue: () => void
   onCancelTicket: () => void
   onDismissTicket: () => void
-  onRefreshTicket: () => void
+  onRefreshTicket?: () => void
+  compact?: boolean
+  onViewFullDesk?: () => void
   children?: React.ReactNode
 }
 
@@ -49,6 +51,8 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
   onCancelTicket,
   onDismissTicket,
   onRefreshTicket,
+  compact = true,
+  onViewFullDesk,
   children,
 }) => {
   const { t } = useLanguage()
@@ -350,90 +354,107 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
                 </div>
               </div>
 
-              {/* Visual Lifecycle Progress Timeline */}
-              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Lifecycle Progress
-                </div>
-                <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
-                  {/* Step 1: Issued */}
-                  <div className="space-y-1">
-                    <div className="h-1.5 rounded-full bg-emerald-500" />
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                      {t('tokenPanel.timelineIssued')}
-                    </span>
+              {/* Visual Lifecycle Progress Timeline (Detailed view) */}
+              {!compact && (
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Lifecycle Progress
                   </div>
-                  {/* Step 2: Waiting */}
-                  <div className="space-y-1">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        status === 'WAITING'
-                          ? 'bg-amber-500 animate-pulse'
-                          : status === 'IN_SERVICE' || status === 'COMPLETED'
+                  <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
+                    {/* Step 1: Issued */}
+                    <div className="space-y-1">
+                      <div className="h-1.5 rounded-full bg-emerald-500" />
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        {t('tokenPanel.timelineIssued')}
+                      </span>
+                    </div>
+                    {/* Step 2: Waiting */}
+                    <div className="space-y-1">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          status === 'WAITING'
+                            ? 'bg-amber-500 animate-pulse'
+                            : status === 'IN_SERVICE' || status === 'COMPLETED'
+                              ? 'bg-emerald-500'
+                              : 'bg-slate-300 dark:bg-slate-700'
+                        }`}
+                      />
+                      <span
+                        className={`font-semibold ${
+                          status === 'WAITING'
+                            ? 'text-amber-700 dark:text-amber-400'
+                            : status === 'IN_SERVICE' || status === 'COMPLETED'
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {t('tokenPanel.timelineWaiting')}
+                      </span>
+                    </div>
+                    {/* Step 3: Serving */}
+                    <div className="space-y-1">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          status === 'IN_SERVICE'
+                            ? 'bg-blue-600 animate-ping'
+                            : status === 'COMPLETED'
+                              ? 'bg-emerald-500'
+                              : 'bg-slate-300 dark:bg-slate-700'
+                        }`}
+                      />
+                      <span
+                        className={`font-semibold ${
+                          status === 'IN_SERVICE'
+                            ? 'text-blue-700 dark:text-blue-400'
+                            : status === 'COMPLETED'
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {t('tokenPanel.timelineServing')}
+                      </span>
+                    </div>
+                    {/* Step 4: Done */}
+                    <div className="space-y-1">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          status === 'COMPLETED'
                             ? 'bg-emerald-500'
-                            : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                    />
-                    <span
-                      className={`font-semibold ${
-                        status === 'WAITING'
-                          ? 'text-amber-700 dark:text-amber-400'
-                          : status === 'IN_SERVICE' || status === 'COMPLETED'
+                            : status === 'CANCELLED'
+                              ? 'bg-rose-500'
+                              : 'bg-slate-300 dark:bg-slate-700'
+                        }`}
+                      />
+                      <span
+                        className={`font-semibold ${
+                          status === 'COMPLETED'
                             ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-slate-400'
-                      }`}
-                    >
-                      {t('tokenPanel.timelineWaiting')}
-                    </span>
-                  </div>
-                  {/* Step 3: Serving */}
-                  <div className="space-y-1">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        status === 'IN_SERVICE'
-                          ? 'bg-blue-600 animate-ping'
-                          : status === 'COMPLETED'
-                            ? 'bg-emerald-500'
-                            : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                    />
-                    <span
-                      className={`font-semibold ${
-                        status === 'IN_SERVICE'
-                          ? 'text-blue-700 dark:text-blue-400'
-                          : status === 'COMPLETED'
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-slate-400'
-                      }`}
-                    >
-                      {t('tokenPanel.timelineServing')}
-                    </span>
-                  </div>
-                  {/* Step 4: Done */}
-                  <div className="space-y-1">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        status === 'COMPLETED'
-                          ? 'bg-emerald-500'
-                          : status === 'CANCELLED'
-                            ? 'bg-rose-500'
-                            : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                    />
-                    <span
-                      className={`font-semibold ${
-                        status === 'COMPLETED'
-                          ? 'text-emerald-700 dark:text-emerald-400'
-                          : status === 'CANCELLED'
-                            ? 'text-rose-700 dark:text-rose-400'
-                            : 'text-slate-400'
-                      }`}
-                    >
-                      {status === 'CANCELLED' ? 'Cancelled' : t('tokenPanel.timelineCompleted')}
-                    </span>
+                            : status === 'CANCELLED'
+                              ? 'text-rose-700 dark:text-rose-400'
+                              : 'text-slate-400'
+                        }`}
+                      >
+                        {status === 'CANCELLED' ? 'Cancelled' : t('tokenPanel.timelineCompleted')}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* View Full Token Desk action in compact mode */}
+              {compact && onViewFullDesk && (
+                <div className="pt-1">
+                  <button
+                    id="btn-view-full-token-desk"
+                    type="button"
+                    onClick={onViewFullDesk}
+                    className="w-full py-1.5 px-3 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-900/60 rounded-xl font-semibold text-xs transition cursor-pointer flex items-center justify-center space-x-1"
+                  >
+                    <span>View Full Token Desk</span>
+                    <span>&rarr;</span>
+                  </button>
+                </div>
+              )}
 
               {/* Short Polling Status & Actions */}
               <div className="flex flex-col gap-2 pt-2 border-t border-blue-100 dark:border-slate-800 text-xs">
@@ -494,8 +515,8 @@ export const CitizenTokenDesk: React.FC<CitizenTokenDeskProps> = ({
               </div>
             </div>
 
-            {/* Operator Desk / Actions (passed as children) */}
-            {children}
+            {/* Staff counter controls strictly restricted to authorized staff/admin accounts */}
+            {(currentUser?.role === 'ADMIN' || currentUser?.role === 'OPERATOR') && children}
           </div>
         ) : (
           /* STATE 4: LOADING / RECOVERING STATE */

@@ -406,16 +406,22 @@ def test_arrival_window_stale_exact_1801_boundary():
     recommendation = planner._calculate_arrival_window(mock_status, fixed_now)
 
     assert recommendation.is_recommended is False
+    assert recommendation.confidence is None
     assert recommendation.data_freshness_seconds == 1801
     assert recommendation.last_updated == fixed_now
-    assert "stale" in (recommendation.reason or "").lower()
+    assert recommendation.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
+    )
     assert recommendation.window_start_minutes is None
     assert recommendation.window_end_minutes is None
     assert recommendation.suggested_arrival_text is None
 
 
 def test_arrival_window_stale_data_rejection():
-    """Verifies telemetry > 1800 seconds (30m) yields truthful unrecommended state."""
+    """Verifies telemetry > 1800 seconds (30m) yields truthful unrecommended state
+    with exact message.
+    """
     planner = PlannerService(session=MagicMock())
     service_id = uuid.uuid4()
     mock_status = _build_mock_queue_status(
@@ -429,9 +435,66 @@ def test_arrival_window_stale_data_rejection():
     recommendation = planner._calculate_arrival_window(mock_status, datetime.now(UTC))
 
     assert recommendation.is_recommended is False
-    assert "stale" in (recommendation.reason or "").lower()
+    assert recommendation.confidence is None
+    assert recommendation.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
+    )
     assert recommendation.window_start_minutes is None
     assert recommendation.window_end_minutes is None
+    assert recommendation.suggested_arrival_text is None
+
+
+def test_arrival_window_fresh_vs_stale_telemetry_contrast():
+    """Verifies fresh telemetry preserves numerical arrival window and confidence,
+    while stale telemetry suppresses both and provides actionable guidance.
+    """
+    planner = PlannerService(session=MagicMock())
+    service_id = uuid.uuid4()
+
+    # 1. Fresh telemetry at 900s
+    fresh_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=10.0,
+        upper_minutes=25.0,
+        expected_minutes=15.0,
+        active_counters=2,
+        people_ahead=5,
+        freshness_seconds=900,
+    )
+    fresh_rec = planner._calculate_arrival_window(fresh_status, datetime.now(UTC))
+    assert fresh_rec.is_recommended is True
+    assert fresh_rec.confidence == EstimateConfidence.HIGH
+    assert fresh_rec.suggested_arrival_text is not None
+    assert "Within " in fresh_rec.suggested_arrival_text
+    assert len(fresh_rec.assumptions) > 0
+
+    # 2. Stale telemetry at 1805s
+    stale_status = _build_mock_queue_status(
+        service_id,
+        "Driving Licence Renewal",
+        is_available=True,
+        confidence=EstimateConfidence.HIGH,
+        lower_minutes=10.0,
+        upper_minutes=25.0,
+        expected_minutes=15.0,
+        active_counters=2,
+        people_ahead=5,
+        freshness_seconds=1805,
+    )
+    stale_rec = planner._calculate_arrival_window(stale_status, datetime.now(UTC))
+    assert stale_rec.is_recommended is False
+    assert stale_rec.confidence is None
+    assert stale_rec.suggested_arrival_text is None
+    assert stale_rec.window_start_minutes is None
+    assert stale_rec.window_end_minutes is None
+    assert stale_rec.reason == (
+        "Current estimate unavailable — latest queue data is stale. "
+        "Please verify with the facility."
+    )
 
 
 def test_arrival_window_low_confidence_rejection():

@@ -40,7 +40,7 @@ async function setupIsolatedService(request: any, name: string) {
     headers: { Authorization: `Bearer ${adminToken}` },
     data: {
       location_id: locationId,
-      name: `${name} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: `000-${name} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       description: 'M4 Auth & RBAC service track',
     },
   })
@@ -235,12 +235,10 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     await page.click('#btn-join-queue')
     await expect(page.getByText('WAITING IN LINE', { exact: true })).toBeVisible()
 
-    // Check operator role indicator shows restricted for Citizen
-    await expect(page.locator('#operator-role-indicator')).toContainText('Staff Restricted')
-
-    // Verify staff-only counter controls are disabled for Citizen
-    await expect(page.locator('#btn-operator-start')).toBeDisabled()
-    await expect(page.locator('#btn-operator-complete')).toBeDisabled()
+    // Verify staff-only counter controls are not exposed to ordinary citizen accounts
+    await expect(page.locator('#operator-role-indicator')).not.toBeVisible()
+    await expect(page.locator('#btn-operator-start')).not.toBeVisible()
+    await expect(page.locator('#btn-operator-complete')).not.toBeVisible()
 
     // Verify direct API call by Citizen is rejected with 403 Forbidden by backend RBAC
     const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
@@ -552,5 +550,42 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     await expect(
       page.getByText('Google OAuth Client ID is not configured on this environment')
     ).toBeVisible()
+  })
+
+  test('Scenario 14: Direct URL route checking fails closed for unauthorized or deprecated workspaces', async ({
+    page,
+  }) => {
+    // 1. Unauthenticated direct access to /#admin fails closed
+    await page.goto('/#admin')
+    const alert = page.locator('#route-access-notice')
+    await expect(alert).toBeVisible()
+    await expect(alert).toContainText('Please sign in with an Administrator account')
+
+    // 2. Direct access to /#operator shows operator workspace is deprecated
+    await page.goto('/#operator')
+    await expect(alert).toBeVisible()
+    await expect(alert).toContainText('Operator Workspace is not active in this release')
+
+    // 3. Authenticate as Citizen and verify /#admin is still blocked
+    await page.click('#btn-open-auth')
+    await page.fill('#input-login-email', 'citizen@queless.gov.in')
+    await page.fill('#input-login-password', 'CitizenPass123!')
+    await page.click('#btn-submit-login')
+    await expect(page.locator('#auth-role-badge')).toHaveText('CITIZEN')
+
+    await page.goto('/#admin')
+    await expect(alert).toBeVisible()
+    await expect(alert).toContainText('Administrator credentials required')
+
+    // 4. Authenticate as Admin and verify Admin Workspace loads
+    await page.click('#btn-logout')
+    await page.click('#btn-open-auth')
+    await page.fill('#input-login-email', 'admin@queless.gov.in')
+    await page.fill('#input-login-password', 'AdminPass123!')
+    await page.click('#btn-submit-login')
+    await expect(page.locator('#auth-role-badge')).toHaveText('ADMIN')
+
+    await page.goto('/#admin')
+    await expect(page.getByRole('heading', { name: 'System Administrator Workspace' })).toBeVisible()
   })
 })

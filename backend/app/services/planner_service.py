@@ -946,12 +946,12 @@ class PlannerService:
         if freshness_sec is None or freshness_sec > 1800:
             return ArrivalWindowRecommendation(
                 is_recommended=False,
-                confidence=est.confidence,
+                confidence=None,
                 data_freshness_seconds=freshness_sec,
                 last_updated=now,
                 reason=(
-                    "Queue telemetry is stale (>30 minutes old) or freshness is unavailable. "
-                    "An arrival window cannot be reliably projected."
+                    "Current estimate unavailable — latest queue data is stale. "
+                    "Please verify with the facility."
                 ),
             )
 

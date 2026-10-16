@@ -152,15 +152,6 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
         <div className="relative z-10 space-y-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                {t('discovery.badge')}
-              </span>
-              <span className="text-xs text-slate-400 dark:text-slate-600 font-medium hidden sm:inline">&bull;</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
-                {t('discovery.motto')}
-              </span>
-            </div>
             <h2
               id="service-discovery-heading"
               className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
@@ -458,9 +449,6 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="space-y-0.5">
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-bold tracking-wider uppercase text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
-                  {t('queue.telemetryBadge')}
-                </span>
                 {demoQueueStatus.estimated_wait.is_available ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded flex items-center space-x-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -481,12 +469,6 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
                   {selectedDemoService.description}
                 </p>
               )}
-            </div>
-
-            <div className="flex items-center space-x-2 shrink-0">
-              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-                {t('queue.simulationScenario')}
-              </span>
             </div>
           </div>
 
@@ -594,33 +576,43 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
 
           {/* Mathematical Signals & Explanation */}
           {demoQueueStatus.estimated_wait?.is_available && (
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
-              <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center space-x-1.5">
-                <svg className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span>
-                  {t('queue.sampleBaseline', { count: demoQueueStatus.estimated_wait.sample_size ?? 0 })}
+            <details className="group p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+              <summary className="font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between cursor-pointer select-none">
+                <span className="flex items-center space-x-1.5">
+                  <svg className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>
+                    {t('queue.sampleBaseline', { count: demoQueueStatus.estimated_wait.sample_size ?? 0 })}
+                  </span>
                 </span>
+                <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 group-open:hidden">
+                  View details &darr;
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 hidden group-open:inline">
+                  Hide details &uarr;
+                </span>
+              </summary>
+              <div className="pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-800/60 space-y-1 pl-5">
+                {typeof demoQueueStatus.estimated_wait.supporting_signals?.service_rate_per_hour ===
+                  'number' && (
+                  <div className="text-slate-600 dark:text-slate-400">
+                    {t('queue.counterThroughput', {
+                      rate: (
+                        demoQueueStatus.estimated_wait.supporting_signals.service_rate_per_hour as number
+                      ).toFixed(1),
+                    })}
+                  </div>
+                )}
+                {typeof demoQueueStatus.estimated_wait.supporting_signals?.simulation_notice ===
+                  'string' && (
+                  <div className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">
+                    {t('queue.notice')}{' '}
+                    {String(demoQueueStatus.estimated_wait.supporting_signals.simulation_notice)}
+                  </div>
+                )}
               </div>
-              {typeof demoQueueStatus.estimated_wait.supporting_signals?.service_rate_per_hour ===
-                'number' && (
-                <div className="text-slate-600 dark:text-slate-400 pl-5">
-                  {t('queue.counterThroughput', {
-                    rate: (
-                      demoQueueStatus.estimated_wait.supporting_signals.service_rate_per_hour as number
-                    ).toFixed(1),
-                  })}
-                </div>
-              )}
-              {typeof demoQueueStatus.estimated_wait.supporting_signals?.simulation_notice ===
-                'string' && (
-                <div className="text-[11px] text-amber-900 dark:text-amber-200 font-medium pl-5">
-                  {t('queue.notice')}{' '}
-                  {String(demoQueueStatus.estimated_wait.supporting_signals.simulation_notice)}
-                </div>
-              )}
-            </div>
+            </details>
           )}
 
           {/* Primary Action Buttons: Plan Visit & Proceed to Token Desk */}
@@ -699,75 +691,6 @@ export const IndiaDemoExplorer: React.FC<IndiaDemoExplorerProps> = ({
           {t('discovery.emptyPrompt')}
         </div>
       )}
-
-      {/* CIVIC EXPLAINER SECTION: A Simpler Way to Access Public Services */}
-      <div
-        id="citizen-explainer-section"
-        className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-gradient-to-b from-slate-50/70 to-white dark:from-slate-850/60 dark:to-slate-900 p-5 sm:p-6 space-y-4"
-      >
-        <div className="text-center max-w-xl mx-auto space-y-1">
-          <h3 className="font-serif text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100">
-            {t('explainer.title')}
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {t('explainer.subtitle')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-          {/* Step 1 */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 space-y-1.5 shadow-2xs">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs border border-blue-100 dark:border-blue-900">
-              1
-            </div>
-            <div className="font-bold text-xs text-slate-900 dark:text-slate-100">
-              {t('explainer.step1Title')}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('explainer.step1Desc')}
-            </p>
-          </div>
-
-          {/* Step 2 */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 space-y-1.5 shadow-2xs">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs border border-blue-100 dark:border-blue-900">
-              2
-            </div>
-            <div className="font-bold text-xs text-slate-900 dark:text-slate-100">
-              {t('explainer.step2Title')}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('explainer.step2Desc')}
-            </p>
-          </div>
-
-          {/* Step 3 */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 space-y-1.5 shadow-2xs">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs border border-blue-100 dark:border-blue-900">
-              3
-            </div>
-            <div className="font-bold text-xs text-slate-900 dark:text-slate-100">
-              {t('explainer.step3Title')}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('explainer.step3Desc')}
-            </p>
-          </div>
-
-          {/* Step 4 */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 space-y-1.5 shadow-2xs">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs border border-blue-100 dark:border-blue-900">
-              4
-            </div>
-            <div className="font-bold text-xs text-slate-900 dark:text-slate-100">
-              {t('explainer.step4Title')}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              {t('explainer.step4Desc')}
-            </p>
-          </div>
-        </div>
-      </div>
     </section>
   )
 }
