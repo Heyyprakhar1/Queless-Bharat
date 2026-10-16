@@ -79,7 +79,8 @@ async function loginAsCitizenHelper(
   name = 'Citizen Amit Sharma',
   email = 'citizen@queless.gov.in'
 ) {
-  await page.click('#btn-open-auth')
+  await page.click('#btn-open-citizen-access')
+  await page.click('#tab-login')
   await page.fill('#input-login-email', email)
   await page.fill('#input-login-password', 'CitizenPass123!')
   await page.click('#btn-submit-login')
@@ -94,14 +95,36 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     await page.reload()
   })
 
+  test('Regression: Logged-out header displays Citizen Access and omits standalone Staff Portal button', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    // 1. Citizen Access button is visible
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+
+    // 2. Standalone Staff Portal button is absent from DOM
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
+
+    // 3. Staff login remains reachable through Citizen Access -> Staff Portal tab
+    await page.click('#btn-open-citizen-access')
+    await expect(page.locator('#tab-citizen')).toBeVisible()
+    await expect(page.locator('#tab-login')).toBeVisible()
+    await page.click('#tab-login')
+    await expect(page.locator('#input-login-email')).toBeVisible()
+    await expect(page.locator('#input-login-password')).toBeVisible()
+    await expect(page.locator('#btn-submit-login')).toBeVisible()
+  })
+
   test('Scenario 1: Successful login displays identity and role in browser UI', async ({
     page,
   }) => {
     await page.goto('/')
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
-    // Open staff login modal
-    await page.click('#btn-open-auth')
+    // Open staff login via Citizen Access -> Staff Portal tab
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'CitizenPass123!')
     await page.click('#btn-submit-login')
@@ -179,7 +202,8 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     page,
   }) => {
     await page.goto('/')
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
 
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'WrongPassword123!')
@@ -278,9 +302,11 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
 
     // Step 2: Switch to Operator assigned to this service
     await page.click('#btn-logout')
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', opEmail)
     await page.fill('#input-login-password', opPass)
     await page.click('#btn-submit-login')
@@ -336,11 +362,12 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
 
     // Citizen A logs out
     await page.click('#btn-logout')
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
     // Register Citizen B
     const uniqueB = `citizen.b.${Date.now()}@example.com`
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
     await page.click('#tab-register')
     await page.fill('#input-register-name', 'Citizen B Non-Owner')
     await page.fill('#input-register-email', uniqueB)
@@ -382,7 +409,8 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     // Badges disappear
     await expect(page.locator('#auth-user-badge')).not.toBeVisible()
     await expect(page.locator('#auth-role-badge')).not.toBeVisible()
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
     // LocalStorage keys removed
     const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
@@ -426,7 +454,8 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     await page.reload()
 
     // App should clear the bad token and show unauthenticated interface
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
     await expect(page.locator('#auth-user-badge')).not.toBeVisible()
 
     const token = await page.evaluate(() => localStorage.getItem('queless_access_token'))
@@ -452,9 +481,11 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
 
     // 2. Switch to Operator assigned to this service
     await page.click('#btn-logout')
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', opEmail)
     await page.fill('#input-login-password', opPass)
     await page.click('#btn-submit-login')
@@ -567,7 +598,8 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
     await expect(alert).toContainText('Operator Workspace is not active in this release')
 
     // 3. Authenticate as Citizen and verify /#admin is still blocked
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'CitizenPass123!')
     await page.click('#btn-submit-login')
@@ -579,7 +611,10 @@ test.describe('QueuelessBharat — Milestone 4 & 6.2 Auth & RBAC Suite', () => {
 
     // 4. Authenticate as Admin and verify Admin Workspace loads
     await page.click('#btn-logout')
-    await page.click('#btn-open-auth')
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'admin@queless.gov.in')
     await page.fill('#input-login-password', 'AdminPass123!')
     await page.click('#btn-submit-login')

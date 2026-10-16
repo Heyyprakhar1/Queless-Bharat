@@ -228,8 +228,9 @@ test.describe('QueuelessBharat — Civic Discovery & Smart Visit Planner Repair 
 
     await page.goto('/')
 
-    // Verify user is anonymous (no login token) - Staff Portal button is visible for staff
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    // Verify user is anonymous (no login token) - Citizen Access button is visible and separate Staff Portal button is absent
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
     // Select Pune
     const citySelect = page.locator('#city-select')

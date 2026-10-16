@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${BACKEND_IMAGE:-heyyprakhar1/queuelessbharat-backend:latest}
+    image: ${BACKEND_IMAGE:-heyyprakhar1/queuelessbharat-backend:e069a8a-fix1}
     container_name: queless-backend
     restart: unless-stopped
     environment:
@@ -32,7 +32,7 @@ services:
       - queless-net
 
   frontend:
-    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:latest}
+    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:e069a8a-fix2}
     container_name: queless-frontend
     restart: unless-stopped
     depends_on:

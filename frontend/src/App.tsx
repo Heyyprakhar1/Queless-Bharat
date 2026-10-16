@@ -727,11 +727,6 @@ function AppContent() {
             setAuthError(null)
             setShowAuthModal(true)
           }}
-          onOpenStaffPortal={() => {
-            setAuthTab('staff')
-            setAuthError(null)
-            setShowAuthModal(true)
-          }}
         />
 
         {/* Route Access Notice Alert */}

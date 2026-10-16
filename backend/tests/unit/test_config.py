@@ -162,3 +162,43 @@ def test_database_url_override_schemes() -> None:
     s_async = Settings(DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db")
     assert s_async.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
     assert s_async.sync_database_url == "postgresql+psycopg://user:pass@host:5432/db"
+
+
+def test_alembic_config_escapes_percent_encoded_credentials() -> None:
+    """Verifies that URLs with percent-encoded credentials (%23, etc.) configure Alembic without
+    ConfigParser error.
+    """
+    from alembic.config import Config
+    from sqlalchemy import engine_from_config, pool
+
+    # Dummy test credentials containing characters that URL-encode to %23, %25
+    settings = Settings(
+        POSTGRES_SERVER="db.example.internal",
+        POSTGRES_PORT=5432,
+        POSTGRES_USER="test_admin",
+        POSTGRES_PASSWORD="Dummy#Pass%123",
+        POSTGRES_DB="queless_db",
+    )
+    raw_url = settings.sync_database_url
+    assert "%23" in raw_url  # '#' encoded as %23
+    assert "%25" in raw_url  # '%' encoded as %25
+
+    alembic_cfg = Config("alembic.ini")
+    # Escaping '%' as '%%' prevents ConfigParser from raising ValueError
+    alembic_cfg.set_main_option("sqlalchemy.url", raw_url.replace("%", "%%"))
+
+    # Verify ConfigParser resolves it back to the exact unescaped URL
+    resolved_main_option = alembic_cfg.get_main_option("sqlalchemy.url")
+    assert resolved_main_option == raw_url
+
+    section = alembic_cfg.get_section(alembic_cfg.config_ini_section, {})
+    assert section.get("sqlalchemy.url") == raw_url
+
+    # Verify SQLAlchemy engine_from_config correctly decodes the credentials
+    engine = engine_from_config(
+        section,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    assert engine.url.password == "Dummy#Pass%123"
+    assert engine.url.username == "test_admin"

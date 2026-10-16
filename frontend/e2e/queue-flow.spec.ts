@@ -58,7 +58,8 @@ async function setupIsolatedService(request: any, name: string) {
 }
 
 async function loginAsCitizen(page: any) {
-  await page.click('#btn-open-auth')
+  await page.click('#btn-open-citizen-access')
+  await page.click('#tab-login')
   await page.fill('#input-login-email', 'citizen@queless.gov.in')
   await page.fill('#input-login-password', 'CitizenPass123!')
   await page.click('#btn-submit-login')
@@ -69,7 +70,8 @@ async function loginAsCitizen(page: any) {
 }
 
 async function loginAsAdmin(page: any) {
-  await page.click('#btn-open-auth')
+  await page.click('#btn-open-citizen-access')
+  await page.click('#tab-login')
   await page.fill('#input-login-email', 'admin@queless.gov.in')
   await page.fill('#input-login-password', 'AdminPass123!')
   await page.click('#btn-submit-login')

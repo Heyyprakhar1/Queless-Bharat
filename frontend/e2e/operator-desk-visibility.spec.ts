@@ -99,7 +99,8 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
   }) => {
     // 1. Citizen logs in and navigates to Pune Admissions service
     await page.goto('/')
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'CitizenPass123!')
     await page.click('#btn-submit-login')
@@ -161,9 +162,11 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
 
     // 4. Operator logs in and opens Operator Desk
     await page.click('#btn-logout')
-    await expect(page.locator('#btn-open-auth')).toBeVisible()
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
 
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'operator@queless.gov.in')
     await page.fill('#input-login-password', 'OperatorPass123!')
     await page.click('#btn-submit-login')
@@ -216,7 +219,8 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
 
     // 1. Citizen joins isolated queue
     await page.goto('/')
-    await page.click('#btn-open-auth')
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', 'citizen@queless.gov.in')
     await page.fill('#input-login-password', 'CitizenPass123!')
     await page.click('#btn-submit-login')
@@ -234,7 +238,10 @@ test.describe('Operator Desk Visibility & Token Lifecycle Regression Suite', () 
 
     // 2. Operator logs in and views isolated service queue
     await page.click('#btn-logout')
-    await page.click('#btn-open-auth')
+    await expect(page.locator('#btn-open-citizen-access')).toBeVisible()
+    await expect(page.locator('#btn-open-auth')).toHaveCount(0)
+    await page.click('#btn-open-citizen-access')
+    await page.click('#tab-login')
     await page.fill('#input-login-email', opEmail)
     await page.fill('#input-login-password', opPass)
     await page.click('#btn-submit-login')

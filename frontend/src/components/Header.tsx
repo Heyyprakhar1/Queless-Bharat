@@ -11,7 +11,6 @@ interface HeaderProps {
   onSelectWorkspace: (ws: 'citizen' | 'staff') => void
   onLogout: () => void
   onOpenCitizenAccess: () => void
-  onOpenStaffPortal: () => void
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,7 +19,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectWorkspace,
   onLogout,
   onOpenCitizenAccess,
-  onOpenStaffPortal,
 }) => {
   const { theme, toggleTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
@@ -304,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
           ) : (
-            /* Logged out state: Citizen Access & Staff Portal buttons */
+            /* Logged out state: Citizen Access button */
             <div className="flex items-center space-x-2">
               <button
                 id="btn-open-citizen-access"
@@ -313,14 +311,6 @@ export const Header: React.FC<HeaderProps> = ({
                 className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-medium text-xs rounded-xl transition shadow-xs cursor-pointer select-none"
               >
                 {t('header.citizenAccess')}
-              </button>
-              <button
-                id="btn-open-auth"
-                type="button"
-                onClick={onOpenStaffPortal}
-                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs rounded-xl transition border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center space-x-1 select-none"
-              >
-                <span>{t('header.staffPortal')}</span>
               </button>
             </div>
           )}
