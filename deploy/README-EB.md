@@ -1,9 +1,12 @@
 # Elastic Beanstalk Docker Compose deployment
 
-## Bundle and platform
-Use a Compose-capable Elastic Beanstalk Docker platform branch (for example, a supported Docker on 64-bit Amazon Linux 2023 release). The EB application source ZIP must have `docker-compose.yml` at its archive root. The existing root `docker-compose.yml` is for local development and includes PostgreSQL; do not replace it with the EB configuration.
+## Which Compose file is used?
+- Root `/docker-compose.yml`: local development; includes a PostgreSQL container. Do not upload this one to production EB.
+- `deploy/elasticbeanstalk/docker-compose.yml`: the single canonical Elastic Beanstalk Compose file. It runs frontend + backend and connects to external private RDS; it does not start a database container.
+- Do not maintain a second EB Compose file. The old duplicate `deploy/docker-compose.eb.yml` has been removed.
 
-For an EB bundle, copy `deploy/docker-compose.eb.yml` to the bundle root as `docker-compose.yml`. This file runs frontend and backend containers and uses private RDS; it does not start a database container.
+## Bundle and platform
+Use a Compose-capable Elastic Beanstalk Docker platform branch (for example, a supported Docker on 64-bit Amazon Linux 2023 release). The EB source ZIP must contain `docker-compose.yml` at the archive root. Run `bash deploy/package_eb_bundle.sh` from the repository root to package the canonical EB file and `.ebextensions` directory. Upload the resulting `dist/queueless-bharat-eb.zip` in Elastic Beanstalk.
 
 ## Secrets and environment
 Never put a real `.env` file in Git or the EB ZIP. Use EB environment properties for non-secret configuration and supported Secrets Manager / Parameter Store references for sensitive values. The EB EC2 instance profile needs least-privilege read permissions. Variable names must match those referenced in Compose.
@@ -23,8 +26,8 @@ A fixed tag is convenient, but **it is mutable**: pushing a new image to `:eb` c
 ## Validation
 With Docker Compose v2 and a safe local validation env file:
 ```bash
-docker compose --env-file /path/to/eb-validation.env -f deploy/docker-compose.eb.yml config --quiet
-docker compose --env-file /path/to/eb-validation.env -f deploy/docker-compose.eb.yml pull
+docker compose --env-file /path/to/eb-validation.env -f deploy/elasticbeanstalk/docker-compose.yml config --quiet
+docker compose --env-file /path/to/eb-validation.env -f deploy/elasticbeanstalk/docker-compose.yml pull
 ```
 Do not print or share resolved Compose output because it can contain secrets. `pull` checks registry access, not runtime health or RDS reachability.
 
