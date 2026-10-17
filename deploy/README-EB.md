@@ -13,8 +13,12 @@ Required: `POSTGRES_SERVER`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AUTH_SECRET_
 ## Private RDS
 Allow inbound TCP 5432 on the RDS security group from the EB instance security group only. Confirm VPC routes and test connectivity from EB. Do not make RDS public.
 
-## Image reproducibility
-The Compose file uses explicit versioned tags instead of `latest`. Tags are mutable in Docker registries, so this is not a strict immutable guarantee. Before production deployment, verify both image tags exist and preferably pin verified image digests (`repository@sha256:...`). Never guess a digest. Ensure images are publicly pullable or configure supported private-registry authentication.
+## Image tags and releases
+The deployment convention is the fixed tag `:eb` for both backend and frontend. Build and push both images to these exact repositories/tags before deploying:
+- `heyyprakhar1/queuelessbharat-backend:eb`
+- `heyyprakhar1/queuelessbharat-frontend:eb`
+
+A fixed tag is convenient, but **it is mutable**: pushing a new image to `:eb` changes what that tag points to. For release traceability, record the source commit and preferably pin verified image digests (`repository@sha256:...`) for production releases. Never assume the `:eb` tags exist until registry pull is verified. Ensure images are publicly pullable or configure supported private-registry authentication. After pushing updated images, ensure EB actually pulls/recreates containers rather than continuing to run cached images.
 
 ## Validation
 With Docker Compose v2 and a safe local validation env file:
