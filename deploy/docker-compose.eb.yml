@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${BACKEND_IMAGE:-heyyprakhar1/queuelessbharat-backend:e069a8a-fix1}
+    image: ${BACKEND_IMAGE:-heyyprakhar1/queuelessbharat-backend:eb}
     restart: unless-stopped
     environment:
       POSTGRES_SERVER: ${POSTGRES_SERVER:?Set POSTGRES_SERVER}
@@ -31,7 +31,7 @@ services:
       - queless-net
 
   frontend:
-    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:e069a8a-fix2}
+    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:eb}
     restart: unless-stopped
     depends_on:
       backend:
