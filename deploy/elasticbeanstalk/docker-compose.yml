@@ -30,7 +30,7 @@ services:
     networks: [queless-net]
 
   frontend:
-    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:eb}
+    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:google-login-v1}
     restart: unless-stopped
     depends_on:
       backend:

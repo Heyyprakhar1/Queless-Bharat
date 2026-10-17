@@ -56,7 +56,7 @@ services:
       - queless-net
 
   frontend:
-    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:latest}
+    image: ${FRONTEND_IMAGE:-heyyprakhar1/queuelessbharat-frontend:google-login-v1}
     container_name: queless-frontend
     restart: unless-stopped
     depends_on:
